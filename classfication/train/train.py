@@ -51,7 +51,7 @@ class Train:
         qbar = tqdm.tqdm(self.eval_dataloader, dynamic_ncols=True, leave=False)
         hard_neg_example=[]
         for i, data in enumerate(qbar, 0):
-            inputs, labels, path_list = data
+            inputs, labels, patch_list = data
             inputs, labels = inputs.cuda(), labels.cpu()
 
             outputs = self.net(inputs).squeeze().cpu()

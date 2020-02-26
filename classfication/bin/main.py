@@ -1,11 +1,11 @@
 import sys
 sys.path.append('../..')
-from .config import *
+from classfication.bin.config import *
 import classfication.train
 import classfication.data as data
 from classfication.train import Train
 # 基于config模板导入具体参数
-from .inception_config import *
+from classfication.bin.inception_config import *
 
 # ==============do not need change value below if not necessary======================
 

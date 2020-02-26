@@ -80,7 +80,7 @@ num_workers=20
 net = nn.DataParallel(inception_v3(True,num_class=2),device_ids=device_ids)
 train_dataloader = DataLoader(dataset, batch_size=batch_size, sampler=train_sampler, num_workers=num_workers)
 valid_dataloader =  DataLoader(dataset, batch_size=batch_size, sampler=valid_sampler, num_workers=num_workers)
-optimizer=SGD(lr=LR)
+optimizer=SGD(net.parameters(),lr=LR)
 start = 0 #    起始epoch
 end = 3000
 loss = nn.CrossEntropyLoss()
@@ -105,4 +105,5 @@ if ckpt[0]:
                 state[k] = v.cuda()
     start = ckpt[2]+1
 train_writer=SummaryWriter(train_visual)
+net.cuda()
 #  ====================================================

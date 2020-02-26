@@ -7,7 +7,7 @@ from torchvision import transforms
 from classfication.preprocess.wsi_ops import wsi
 from PIL import Image
 import pandas as pd
-
+import pdb
 class MaskDataset():
     def __init__(self,tif_folder,mask_folder,level,patch_size,crop_size,table):
         """
@@ -65,20 +65,22 @@ class MaskDataset():
         '''
         slide_name,_x,_y=self.table[index]
         slide =  self.slide_dict[slide_name]
-        img = wsi.read_slide(slide,_x,_y,self.level,self.patch_size,self.patch_size)
+        img = wsi.read_slide(slide,_x,_y,self.level,self.patch_size,self.patch_size) # numpy.array
         try:
             mask = self.mask_dict[slide_name]
-            target = wsi.read_slide(mask,_x,_y,0,self.patch_size,self.patch_size)
+            target = wsi.read_slide(mask,_x,_y,0,self.patch_size,self.patch_size) #numpy.array
         except:
-            target = torch.zeros_like(img)
+            target = np.zeros_like(img)
         # data augmentation
+        img = Image.fromarray(img)
+        target = Image.fromarray(target)
         img, target = self._random_crop(img,target)
         img = self._color_jitter(img)
         img,target = self._random_flip(img,target)
         img,target = self._random_rotate( img, target)
         # 取最后一个通道
         img, target = self._totensor(img),self._totensor(target)[0,:,:].unsqueeze(0)
-        return img,target,item
+        return img,target,index
 
     def _random_flip(self,img,target):
         # use lefy_right flip
@@ -88,7 +90,6 @@ class MaskDataset():
         return img,target
 
     def _random_rotate(self,img,target):
-        assert isinstance(img,Image)
         num_rotate = np.random.randint(0, 4)
         img = img.rotate(90 * num_rotate)
         target = target.rotate(90 * num_rotate)
@@ -102,12 +103,11 @@ class MaskDataset():
         :param target: PIL
         :return:
         '''
-        assert isinstance(img,Image)
-        assert  isinstance(target,Image)
+
         xloc = np.random.randint(0,self.patch_size-self.crop_size)
         yloc = np.random.randint(0,self.patch_size-self.crop_size)
         img = img.crop(xloc,yloc,xloc+self.crop_size,yloc+self.crop_size)
-        target = target.crop(xloc,yloc,xloc+self.crop_size,yloc+self.crop_size)
+        target = target.crop((xloc,yloc,xloc+self.crop_size,yloc+self.crop_size))
         return img,target
 
 class ListDataset():
@@ -153,15 +153,17 @@ class ListDataset():
         self.slide_dict = {}
         for tif in tif_list:
             basename = os.path.basename(tif).rstrip('.tif')
-            self.slide_dict[basename] = tif
+            self.slide_dict[basename] = openslide.OpenSlide(tif)
 
     def __getitem__(self, item):
         slide_name,_x,_y,target=self.table.loc[item]
         slide = self.slide_dict[slide_name]
-        img =  wsi.read_slide(slide,_x,_y,self.level,self.patch_size,self.patch_size)
+        img = wsi.read_slide(slide,_x,_y,self.level,self.patch_size,self.patch_size)
+        img = Image.fromarray(img)
         img = self._random_crop(img)
         img =  self._color_jitter(img)
         img = self._random_rotate(img)
+        pdb.set_trace()
         img = self._totensor(img)
         return img, target, item
 
@@ -173,10 +175,9 @@ class ListDataset():
         :param target: PIL
         :return:
         '''
-        assert isinstance(img,Image)
         xloc = np.random.randint(0,self.patch_size-self.crop_size)
         yloc = np.random.randint(0,self.patch_size-self.crop_size)
-        img = img.crop(xloc,yloc,xloc+self.crop_size,yloc+self.crop_size)
+        img = img.crop((xloc,yloc,xloc+self.crop_size,yloc+self.crop_size))
         return img
 
     def _random_rotate(self,img):

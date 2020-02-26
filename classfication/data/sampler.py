@@ -39,11 +39,11 @@ class RandomSampler(Sampler):
         #random choice labels and slides
         label=np.random.choice(labels)
         query = self.data_source.table.query(f'(label=={label})')
-        if self.slide[label]:
+        if self.slides[label]:
             slide = np.random.choice(self.slides[label])
         slide = np.random.choice(query['slide_name'].unique())
         sample_index = (query['slide_name']==slide).sample().index
-        return sample_index
+        return iter(sample_index)
 
     def __len__(self):
         return self.num_samples

@@ -7,7 +7,7 @@ import multiprocessing
 import numpy as np
 class wsi(object):
     @staticmethod
-    def read_slide(slide, x, y, level, width, height, as_float=False):
+    def read_slide(slide, x, y, level, width, height, as_numpy=False):
         '''
 
         :param slide:
@@ -23,8 +23,8 @@ class wsi(object):
         x = int(x - width * mag / 2)
         y = int(y - width * mag / 2)
         im = slide.read_region((x, y), level, (width, height)).convert('RGB')
-        if as_float:
-            im = np.asarray(im, dtype=np.float32)
+        if as_numpy:
+            im = np.asarray(im)
         else:
             im = np.asarray(im)
         assert im.shape == (height, width, 3)
