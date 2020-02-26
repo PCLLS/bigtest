@@ -55,8 +55,8 @@ for csv in qbar:
 table=pd.concat(tables).reset_index(drop=True)
 dataset = ListDataset(tif_folder,mask_folder,level,patch_size,crop_size,table) # 训练集所有数据导入
 # 随机分割验证集和训练集
-normal_csv = random.shuffle(normal_csv)
-tumor_csv = random.shuffle(tumor_csv)
+random.shuffle(normal_csv)
+random.shuffle(tumor_csv)
 rate=0.1  # 测试集和验证集比例
 
 ## 训练集

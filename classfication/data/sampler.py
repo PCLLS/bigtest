@@ -21,7 +21,7 @@ class RandomSampler(Sampler):
         '''
         self.data_source = data_source
         self._num_samples = num_samples
-        self.slide_list=slide_list
+        self.slides=slides
         self._sampled=set()
         if not isinstance(self.num_samples, int) or self.num_samples <= 0:
             raise ValueError("num_samples should be a positive integer "
