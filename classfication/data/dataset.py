@@ -63,7 +63,7 @@ class MaskDataset():
         :param index:
         :return: img (C x H x W),target
         '''
-        slide_name,_x,_y=self.table[index]
+        slide_name,_x,_y = self.table[index]
         slide =  self.slide_dict[slide_name]
         img = wsi.read_slide(slide,_x,_y,self.level,self.patch_size,self.patch_size) # numpy.array
         try:
@@ -153,17 +153,20 @@ class ListDataset():
         self.slide_dict = {}
         for tif in tif_list:
             basename = os.path.basename(tif).rstrip('.tif')
-            self.slide_dict[basename] = openslide.OpenSlide(tif)
+            self.slide_dict[basename] = tif
+            # self.slide_dict[basename] = openslide.OpenSlide(tif)
 
     def __getitem__(self, item):
-        slide_name,_x,_y,target=self.table.loc[item]
-        slide = self.slide_dict[slide_name]
+        slide_name,_x,_y,target= self.table.loc[item]
+        try:
+            slide = openslide.OpenSlide(self.slide_dict[slide_name])
+        except:
+            raise ValueError(f'{slide_name}.tif not exists!')
         img = wsi.read_slide(slide,_x,_y,self.level,self.patch_size,self.patch_size)
         img = Image.fromarray(img)
         img = self._random_crop(img)
         img =  self._color_jitter(img)
         img = self._random_rotate(img)
-        pdb.set_trace()
         img = self._totensor(img)
         return img, target, item
 

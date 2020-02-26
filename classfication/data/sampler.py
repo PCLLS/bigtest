@@ -34,16 +34,20 @@ class RandomSampler(Sampler):
             return len(self.data_source)
         return self._num_samples
 
-    def __iter__(self):
-        labels=[0,1] # labels
-        #random choice labels and slides
-        label=np.random.choice(labels)
+    def sample(self):
+        labels = [0, 1]  # labels
+        # random choice labels and slides
+        label = np.random.choice(labels)
         query = self.data_source.table.query(f'(label=={label})')
-        if self.slides[label]:
-            slide = np.random.choice(self.slides[label])
+        slide = np.random.choice(self.slides[label])
         slide = np.random.choice(query['slide_name'].unique())
-        sample_index = (query['slide_name']==slide).sample().index
-        return iter(sample_index)
+        sample_index = query[query['slide_name'] == slide].sample().index[0]
+        return sample_index
 
+    def __iter__(self):
+        samples=[self.sample() for i in range(self.num_samples)]
+        return iter(samples)
+
+        # yield self.sample()
     def __len__(self):
         return self.num_samples

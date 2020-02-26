@@ -19,7 +19,7 @@ train=Train(optimizer,net,workspace,loss, dataset,train_dataloader, valid_datalo
 logging.info('train models')
 for epoch in range(start,end):
     loss=train.train_epoch()
-    train_writer.add_scalar(loss,epoch)
+    train_writer.add_scalar('loss_in_train',loss,epoch)
     state_dict = {
         "net": net.state_dict(),
         "optimizer": optimizer.state_dict(),

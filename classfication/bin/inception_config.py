@@ -10,7 +10,7 @@ try:
 except ImportError:
     from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader
-
+from torchvision.models import Inception3
 from classfication.models.inceptionv3 import inception_v3
 out_fn=None
 from classfication.preprocess.extract_patches import ExtractPatch
@@ -37,7 +37,7 @@ logging.basicConfig(level=logging.INFO,filename=os.path.join(workspace,'log.txt'
 #extract_level = 8 # 提取样本时，采用的倍数
 #label_win_size = 150  # label根据的win大小
 
-patch_size = 512
+patch_size = 310
 crop_size = 299
 level = 0  # 训练图片的倍数
 # 读取数据集
@@ -51,7 +51,7 @@ qbar=tqdm.tqdm(csv_list)
 # 此处从生成的patch的csv文件中导入，如果调用extractor，则是从返回值获取即可
 for csv in qbar:
     qbar.set_description(f'loading csv: {csv}')
-    tables.append(pd.read_csv(csv,index_col=0))
+    tables.append(pd.read_csv(csv,index_col=0,header=0))
 table=pd.concat(tables).reset_index(drop=True)
 dataset = ListDataset(tif_folder,mask_folder,level,patch_size,crop_size,table) # 训练集所有数据导入
 # 随机分割验证集和训练集
@@ -63,21 +63,22 @@ rate=0.1  # 测试集和验证集比例
 train_slides = {}
 train_slides[0] = [os.path.basename(csv).rstrip('.csv')  for csv in normal_csv[:int(len(normal_csv)*(1-rate))]]
 train_slides[1] = [os.path.basename(csv).rstrip('.csv')  for csv in tumor_csv[:int(len(tumor_csv)*(1-rate))]]
-train_sampler=RandomSampler(data_source=dataset,slides=train_slides,num_samples=20000)
+train_sampler=RandomSampler(data_source=dataset,slides=train_slides,num_samples=200)
 
 ## 验证集
 valid_slides = {}
 valid_slides[0] =  [os.path.basename(csv).rstrip('.csv')  for csv in normal_csv[:int(len(normal_csv)*rate)]]
 valid_slides[1] = [os.path.basename(csv).rstrip('.csv')  for csv in tumor_csv[:int(len(tumor_csv)*rate)]]
-valid_sampler=RandomSampler(data_source=dataset,slides=valid_slides,num_samples=4000)
+valid_sampler=RandomSampler(data_source=dataset,slides=valid_slides,num_samples=40)
 
 
 # 模型训练参数
 LR = 0.01
 device_ids=[0,1,2,3]
-batch_size=32
-num_workers=20
-net = nn.DataParallel(inception_v3(True,num_class=2),device_ids=device_ids)
+batch_size=20
+num_workers=5
+net = nn.DataParallel(Inception3(num_classes=2,aux_logits=False),device_ids=device_ids)
+out_fn = lambda x:x[0]
 train_dataloader = DataLoader(dataset, batch_size=batch_size, sampler=train_sampler, num_workers=num_workers)
 valid_dataloader =  DataLoader(dataset, batch_size=batch_size, sampler=valid_sampler, num_workers=num_workers)
 optimizer=SGD(net.parameters(),lr=LR)

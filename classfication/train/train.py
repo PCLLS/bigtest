@@ -34,7 +34,8 @@ class Train:
         for i,data in enumerate(qbar,0):
             inputs, labels, patch_list = data
             inputs, labels = inputs.cuda(), labels.cpu()
-            outputs = self.net(inputs).squeeze().cpu()
+            outputs = self.net(inputs).cpu()
+            print(outputs.size())
             loss = self.loss(outputs, labels)
             self.optimizer.zero_grad()
             loss.backward()
