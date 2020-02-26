@@ -1,0 +1,1 @@
+from classfication.models.scannet.model import Scannet
