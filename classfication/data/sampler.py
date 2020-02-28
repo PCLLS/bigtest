@@ -2,6 +2,22 @@ import torch
 import random
 from torch.utils.data import  Sampler
 import numpy as np
+
+class Sample(object):
+    def __init__(self,num,func):
+        self.num=num
+        self.func=func
+        self.current_index = 0
+    def __iter__(self):
+        return self
+    def __next__(self):
+        if self.current_index<self.num:
+            self.current_index +=1
+            return self.func()
+        else:
+            self.current_index = 0
+            raise StopIteration
+
 class RandomSampler(Sampler):
     r"""Samples elements randomly. sample Tumor and normal with equal prob. sample from each slide with equal prob.
     ref: 《Detecting Cancer Metastases on Gigapixel Pathology Images》
@@ -16,7 +32,7 @@ class RandomSampler(Sampler):
         '''
 
         :param data_source:  需要处理的dataset
-        :param slides (dict):  用于区分开train和valid的数据集，将WSI分为验证集和训练集 ,如果为空则不进行区分
+        :param slides (dict):  用于区分开tumor和normal的数据集，将WSI分为验证集和训练集 ,如果为空则不进行区分
         :param num_samples:  采样数，控制每轮采样数
         '''
         self.data_source = data_source
@@ -39,15 +55,15 @@ class RandomSampler(Sampler):
         # random choice labels and slides
         label = np.random.choice(labels)
         query = self.data_source.table.query(f'(label=={label})')
-        slide = np.random.choice(self.slides[label])
+        tumor_slide = np.random.choice(self.slides[label])
         slide = np.random.choice(query['slide_name'].unique())
         sample_index = query[query['slide_name'] == slide].sample().index[0]
         return sample_index
 
     def __iter__(self):
-        samples=[self.sample() for i in range(self.num_samples)]
-        return iter(samples)
+        samples=Sample(self.num_samples,self.sample)
+#        samples=self.sample()  # 每次只采样一部分减少推断时间
+        return samples
 
-        # yield self.sample()
     def __len__(self):
         return self.num_samples

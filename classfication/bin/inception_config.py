@@ -57,26 +57,30 @@ dataset = ListDataset(tif_folder,mask_folder,level,patch_size,crop_size,table) #
 # 随机分割验证集和训练集
 random.shuffle(normal_csv)
 random.shuffle(tumor_csv)
-rate=0.1  # 测试集和验证集比例
+rate=0.2  # 测试集和验证集比例
 
 ## 训练集
 train_slides = {}
-train_slides[0] = [os.path.basename(csv).rstrip('.csv')  for csv in normal_csv[:int(len(normal_csv)*(1-rate))]]
-train_slides[1] = [os.path.basename(csv).rstrip('.csv')  for csv in tumor_csv[:int(len(tumor_csv)*(1-rate))]]
+train_normal_slides = normal_csv[:int(len(normal_csv)*(1-rate))]
+train_tumor_slides = tumor_csv[:int(len(tumor_csv)*(1-rate))]
+train_slides[0] = [os.path.basename(csv).rstrip('.csv')  for csv in train_normal_slides + train_tumor_slides]
+train_slides[1] = [os.path.basename(csv).rstrip('.csv')  for csv in train_tumor_slides]
 train_sampler=RandomSampler(data_source=dataset,slides=train_slides,num_samples=200)
 
 ## 验证集
 valid_slides = {}
-valid_slides[0] =  [os.path.basename(csv).rstrip('.csv')  for csv in normal_csv[:int(len(normal_csv)*rate)]]
-valid_slides[1] = [os.path.basename(csv).rstrip('.csv')  for csv in tumor_csv[:int(len(tumor_csv)*rate)]]
+valid_normal_slides = normal_csv[:int(len(normal_csv)*rate)]
+valud_tumor_slides = tumor_csv[:int(len(tumor_csv)*rate)]
+valid_slides[0] =  [os.path.basename(csv).rstrip('.csv')  for csv in valid_normal_slides + valud_tumor_slides ]
+valid_slides[1] = [os.path.basename(csv).rstrip('.csv')  for csv in valud_tumor_slides ]
 valid_sampler=RandomSampler(data_source=dataset,slides=valid_slides,num_samples=40)
 
 
 # 模型训练参数
 LR = 0.01
 device_ids=[0,1,2,3]
-batch_size=20
-num_workers=5
+batch_size=4
+num_workers=4
 net = nn.DataParallel(Inception3(num_classes=2,aux_logits=False),device_ids=device_ids)
 out_fn = lambda x:x[0]
 train_dataloader = DataLoader(dataset, batch_size=batch_size, sampler=train_sampler, num_workers=num_workers)
@@ -96,7 +100,7 @@ ckpter = Checkpointer(train_model_save)
 ckpt = ckpter.load(start)
 last_epoch = -1
 if ckpt[0]:
-    net.optim(ckpt[0])
+    net.load_state_dict(ckpt[0])
     optimizer.load_state_dict(ckpt[1])
     start = ckpt[2]+1
     last_epoch = ckpt[2]

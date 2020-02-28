@@ -35,7 +35,7 @@ class Train:
             inputs, labels, patch_list = data
             inputs, labels = inputs.cuda(), labels.cpu()
             outputs = self.net(inputs).cpu()
-            print(outputs.size())
+            # print(outputs.size())
             loss = self.loss(outputs, labels)
             self.optimizer.zero_grad()
             loss.backward()
@@ -54,7 +54,6 @@ class Train:
         for i, data in enumerate(qbar, 0):
             inputs, labels, patch_list = data
             inputs, labels = inputs.cuda(), labels.cpu()
-
             outputs = self.net(inputs).squeeze().cpu()
             loss = self.loss(outputs, labels)
             if self.out_fn != None:
@@ -76,5 +75,5 @@ class Train:
         logging.info(f'pos_acc:{total_pos},neg_acc:{total_neg}, acc:{total_acc} in validation')
         hard_neg_example=pd.DataFrame()
         if save_hard_example:
-            hard_neg_example=self.dataset.loc[FPs]
+            hard_neg_example=self.dataset.table.loc[FPs]
         return total_acc, pos_acc, neg_acc,losses.avg,hard_neg_example
