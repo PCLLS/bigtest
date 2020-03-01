@@ -34,7 +34,7 @@ class ExtractPatch:
         :param save_path:
         :param win_size:
         '''
-        assert (os.path.exists(tif_folder) or os.path.exists(otsu_folder)) and os.path.exists(mask_folder)==True
+        # assert (os.path.exists(tif_folder) or os.path.exists(otsu_folder)) and os.path.exists(mask_folder)==True
         self.otsu_folder=otsu_folder
         self.tif_folder=tif_folder
         self.mask_folder = mask_folder
@@ -111,19 +111,19 @@ class ExtractPatch:
         :return:
         '''
         pool = ThreadPoolExecutor(max_workers=num_works)
-        futures=[]
+        futures = []
         for slide in self.otsu_dict.keys():
             future=pool.submit(self.extract_from_single_slide,slide)
             futures.append(future)
         pool.shutdown(True)
-        results=[]
-        for future in futures:
-            results = future.result()
-        logging.info('save tables')
-        self.table=pd.concat([ results])
-        self.table=self.table.reset_index(drop=True)
-        save = os.path.join(self.save_path, 'allsample.csv')
-        self.table.to_csv(save, header=True)
+        # results=[]
+        # for future in futures:
+        #     results.append(future.result())
+        # logging.info('save tables')
+        # self.table = pd.concat(results)
+        # self.table = self.table.reset_index(drop=True)
+        # save = os.path.join(self.save_path, 'allsample.csv')
+        # self.table.to_csv(save, header=True)
 
     def extract_all_sample(self):
         logging.info('extract_all_sample')
