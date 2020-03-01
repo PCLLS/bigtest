@@ -17,10 +17,10 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../')
 from  classfication.utils.metrics import *
 
 class Train:
-    def __init__(self,optimizer,net,workspace,loss, dataset,train_dataloader, eval_dataloader, out_fn=None):
+    def __init__(self,optimizer,net,workspace,criterion, dataset,train_dataloader, eval_dataloader, out_fn=None):
         self.optimizer = optimizer
         self.net = net
-        self.loss = loss
+        self.criterion = criterion
         self.out_fn = out_fn
         self.workspace = workspace
         self.train_dataloader = train_dataloader
@@ -33,13 +33,15 @@ class Train:
         qbar=tqdm.tqdm(self.train_dataloader, dynamic_ncols=True, leave=False)
         for i,data in enumerate(qbar,0):
             inputs, labels, patch_list = data
+            print(f"input size: {inputs.size()}")
             inputs, labels = inputs.cuda(), labels.cpu()
             outputs = self.net(inputs).cpu()
             # print(outputs.size())
-            loss = self.loss(outputs, labels)
+            loss = self.criterion(outputs, labels)
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
+            qbar.set_description(f'Train Loss:{loss:.4f}')
             losses.addval(loss.item(), len(outputs))
         return losses.avg
 
@@ -53,8 +55,8 @@ class Train:
         hard_neg_example=[]
         for i, data in enumerate(qbar, 0):
             inputs, labels, patch_list = data
-            inputs, labels = inputs.cuda(), labels.cpu()
-            outputs = self.net(inputs).squeeze().cpu()
+            inputs, labels = inputs.cuda(), labels.cuda()
+            outputs = self.net(inputs).squeeze().cuda()
             loss = self.loss(outputs, labels)
             if self.out_fn != None:
                 outputs = self.out_fn(outputs)

@@ -63,7 +63,7 @@ class MaskDataset():
         :param index:
         :return: img (C x H x W),target
         '''
-        slide_name,_x,_y = self.table[index]
+        slide_name,_x,_y,_ = self.table.loc[index]
         slide =  self.slide_dict[slide_name]
         img = wsi.read_slide(slide,_x,_y,self.level,self.patch_size,self.patch_size) # numpy.array
         try:
@@ -79,7 +79,7 @@ class MaskDataset():
         img,target = self._random_flip(img,target)
         img,target = self._random_rotate( img, target)
         # 取最后一个通道
-        img, target = self._totensor(img),self._totensor(target)[0,:,:].unsqueeze(0)
+        img, target = self._totensor(img),self._totensor(target)[0,:,:]
         return img,target,index
 
     def _random_flip(self,img,target):
@@ -106,7 +106,7 @@ class MaskDataset():
 
         xloc = np.random.randint(0,self.patch_size-self.crop_size)
         yloc = np.random.randint(0,self.patch_size-self.crop_size)
-        img = img.crop(xloc,yloc,xloc+self.crop_size,yloc+self.crop_size)
+        img = img.crop((xloc,yloc,xloc+self.crop_size,yloc+self.crop_size))
         target = target.crop((xloc,yloc,xloc+self.crop_size,yloc+self.crop_size))
         return img,target
 
