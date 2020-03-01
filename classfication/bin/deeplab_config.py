@@ -18,12 +18,12 @@ from classfication.data.sampler import RandomSampler
 from classfication.utils import Checkpointer
 from classfication.utils.loss import SegmentationLosses
 
-workspace='/root/workspace/renqian/20200229deeplab/'
+workspace = '/root/workspace/renqian/20200229deeplab/'
 logging.basicConfig(level=logging.INFO,filename=os.path.join(workspace,'log.txt'))
 patch_size = 1500
 crop_size = 1280
 sample_level = 10  # 采样倍数
-dataset_path=os.path.join('/root/workspace/renqian/20200221test/','patchlist')
+dataset_path=os.path.join(workspace,'patchlist')
 win_size=800
 extractor=ExtractPatch(tif_folder,mask_folder,sample_level,dataset_path,win_size)
 extractor.extract_all_sample_together(10)
