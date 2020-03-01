@@ -113,9 +113,9 @@ class ExtractPatch:
         pool = ThreadPoolExecutor(max_workers=num_works)
         futures = []
         for slide in self.otsu_dict.keys():
-            future=pool.submit(self.extract_from_single_slide,slide)
+            future=pool.submit(self.extract_from_single_slide, slide)
             futures.append(future)
-        pool.shutdown(True)
+        return pool.shutdown(True)
         # results=[]
         # for future in futures:
         #     results.append(future.result())
