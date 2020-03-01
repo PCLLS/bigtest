@@ -92,7 +92,6 @@ class ExtractPatch:
         otsu=self.otsu_dict[slide]
         _x, _y = np.where(otsu > 0)
         mask = self.mask_dict.get(slide, None)
-        # data = [(i, j) for i, j in zip(x, y)]
         for x, y in zip(_x, _y):
             label = 0
             if mask:
@@ -149,11 +148,10 @@ class ExtractPatch:
         self.table.to_csv(self.save_path, header=True)
 
 if __name__=='__main__':
-    # otsu_folder='/root/workspace/renqian/CAMELYON16/training/otsu_64'
     tif_folder = '/root/workspace/renqian/CAMELYON16/training/'
     mask_folder='/root/workspace/renqian/CAMELYON16/mask/'
-    level=8
-    save_path='/root/workspace/renqian/20200221test/patchlist/'
-    win_size=150
+    level=10
+    save_path='/root/workspace/renqian/20200301deeplab/patchlist/'
+    win_size=800
     extractor=ExtractPatch(tif_folder,mask_folder,level,save_path,win_size)
     extractor.extract_all_sample_together(10)

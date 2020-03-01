@@ -20,11 +20,16 @@ from classfication.utils.loss import SegmentationLosses
 
 workspace='/root/workspace/renqian/20200229deeplab/'
 logging.basicConfig(level=logging.INFO,filename=os.path.join(workspace,'log.txt'))
-patch_size = 600
-crop_size = 513
-level = 0  # 训练图片的倍数
+patch_size = 1500
+crop_size = 1280
+sample_level = 10  # 采样倍数
+dataset_path=os.path.join('/root/workspace/renqian/20200221test/','patchlist')
+win_size=800
+extractor=ExtractPatch(tif_folder,mask_folder,sample_level,dataset_path,win_size)
+extractor.extract_all_sample_together(10)
+
 # 读取数据集
-dataset_path = os.path.join('/root/workspace/renqian/20200221test/','patchlist')  # 存放dataset表格的文件夹
+# dataset_path = os.path.join('/root/workspace/renqian/20200221test/','patchlist')  # 存放dataset表格的文件夹
 normal_csv = glob.glob(os.path.join(dataset_path, 'normal*.csv'))
 tumor_csv = glob.glob(os.path.join(dataset_path, 'tumor_*.csv'))
 csv_list = normal_csv + tumor_csv
@@ -36,6 +41,7 @@ for csv in qbar:
     qbar.set_description(f'loading csv: {csv}')
     tables.append(pd.read_csv(csv,index_col=0,header=0))
 table=pd.concat(tables).reset_index(drop=True)
+level = 3 # 训练集大小
 dataset = MaskDataset(tif_folder,mask_folder,level,patch_size,crop_size,table) # 训练集所有数据导入
 # 随机分割验证集和训练集
 random.shuffle(normal_csv)
