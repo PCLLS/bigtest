@@ -77,7 +77,7 @@ valid_sampler=RandomSampler(data_source=dataset,slides=valid_slides,num_samples=
 
 
 # 模型训练参数
-LR = 0.01
+LR = 0.1
 device_ids=[0,1,2,3]
 batch_size=4
 num_workers=4
@@ -85,7 +85,7 @@ net = nn.DataParallel(Inception3(num_classes=2,aux_logits=False),device_ids=devi
 out_fn = lambda x:x[0]
 train_dataloader = DataLoader(dataset, batch_size=batch_size, sampler=train_sampler, num_workers=num_workers)
 valid_dataloader =  DataLoader(dataset, batch_size=batch_size, sampler=valid_sampler, num_workers=num_workers)
-optimizer=SGD(net.parameters(),lr=LR)
+optimizer=Adam(net.parameters(),lr=LR, betas=(0.9, 0.99),weight_decay=0.1)
 start = 0 #    起始epoch
 end = 3000
 loss = nn.CrossEntropyLoss()

@@ -57,7 +57,7 @@ class Train:
             inputs, labels, patch_list = data
             inputs, labels = inputs.cuda(), labels.cuda()
             outputs = self.net(inputs).squeeze().cuda()
-            loss = self.loss(outputs, labels)
+            loss = self.criterion(outputs, labels)
             if self.out_fn != None:
                 outputs = self.out_fn(outputs)
             tps, fps, tns, fns, pos, neg = acc_metric(outputs, labels, 0.5)

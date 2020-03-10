@@ -4,7 +4,7 @@ from classfication.bin.config import *
 import classfication.train
 import classfication.data as data
 from classfication.train import Train
-# 基于config模板导入具体参数
+# 鍩轰簬config妯℃澘瀵煎叆鍏蜂綋鍙傛暟
 from classfication.bin.deeplab_config import *
 
 # ==============do not need change value below if not necessary======================
@@ -25,12 +25,5 @@ for epoch in range(start,end):
         "optimizer": optimizer.state_dict(),
         "last_epoch": epoch,
     }
-    if evaluate:
-        total_acc, pos_acc, neg_acc,loss,hard_neg_example=train.eval_epoch()
-        ckpter.save(epoch, state_dict, total_acc)
-        if total_acc > best_valid_acc:
-            best_epoch = epoch
-            best_valid_acc = total_acc
-    else:
-        ckpter.save(epoch, state_dict)
+    ckpter.save(epoch, state_dict)
 

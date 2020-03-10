@@ -6,16 +6,30 @@ import numpy as np
 import pandas as pd
 import logging
 from classfication.preprocess.wsi_ops import wsi
-#import multiprocessing
-from concurrent.futures import ThreadPoolExecutor,ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor,ProcessPoolExecutor,ALL_COMPLETED
+import concurrent.futures
+import argparse
+def get_arg():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-n","-num_works",type=int,default=20,help='num of workers')
+    parser.add_argument("-ol",'-otsu_level',type=int,default=0,help="otsu level")
+    parser.add_argument("-l",'-level',type=int,default=0,help="work level")
+    parser.add_argument("-tf",'-tif_folder',type=str,help="tif folder")
+    parser.add_argument("-mf","-mask_folder",type=str,help="Mask folder")
+    parser.add_argument("-w","-win_size",type=int,help="win size")
+    parser.add_argument("-ss","-StepSize",type=int,help="stride")
+    parser.add_argument("-p","-patch_size",type=int,help="patch size")
+    parser.add_argument("-s","-save",type=str,help="save path")
+    return parser.parse_args()
 
-def Label(x, y, mag,level,win,mask):
-    x, y = x * mag - win / 2, y * mag - win / 2
-    assert isinstance(mask,OpenSlide)
-    label=wsi.read_slide(mask, x, y, level, win, win)[:, :, 0]
-    if np.sum(label) > 0:
-        return 1
-    return 0
+def Label(w, h, mag,level,  win, mask):
+    if mask==0:
+        return mask
+    w, h = w * mag - win / 2, h * mag - win / 2
+    assert isinstance(mask, OpenSlide)
+    label=wsi.read_mask(mask, w, h, level, win, win,as_numpy=True)
+    return int(np.sum(label) > 0)
+
 
 def skip_slide(slide_name):
     skip_list = ['normal_86', 'normal_144', 'test_049', 'test_114']
@@ -25,7 +39,7 @@ def skip_slide(slide_name):
     return False
 
 class ExtractPatch:
-    def __init__(self,tif_folder,mask_folder,level,save_path,win_size,otsu_folder=None,otsu_level=0):
+    def __init__(self,tif_folder,mask_folder,level,save_path,win_size,StepSize=229,patch_size=229,otsu_level=0):
         '''
         Use pandas.Framework to save result
         :param otsu_folder: contain tumor_001.npy
@@ -35,123 +49,108 @@ class ExtractPatch:
         :param win_size:
         '''
         # assert (os.path.exists(tif_folder) or os.path.exists(otsu_folder)) and os.path.exists(mask_folder)==True
-        self.otsu_folder=otsu_folder
         self.tif_folder=tif_folder
         self.mask_folder = mask_folder
-        self.level = level
-        self.save_path = save_path
-        self.win_size = win_size
+        self.level = level # 工作level，如inceptionV3在level 0，
+        self.step_size=StepSize # 滑块滑动步长
+        self.patch_size=patch_size # 滑块在level-0的大小
+        self.save_path = save_path # 存储路径
+        self.win_size = win_size # 标签大小
         self.table=pd.DataFrame(columns=['slide_name','x','y','label'])
-        self._preprocess_mask()
-        if otsu_folder:
-            self._preprocess_otsu()
-            self.otsu_level=otsu_level
-        else:
-            self._preprocess_tif()
+        self._load_mask()
+        self.otsu_level=otsu_level # 滑块所处的level
+        self._load_tif()
 
-    def _preprocess_otsu(self):
-        ''' 如果使用OTSU。npy文件的话'''
-
-        logging.info('read otsu')
-        self.otsu_dict={}
-        pbar =  tqdm.tqdm(glob.glob(os.path.join(self.otsu_folder,'*.npy')))
-        for otsu in pbar:
-            pbar.set_description("Processing otsu: %s" % otsu)
-            if skip_slide(otsu):
-                continue
-            _basename = os.path.basename(otsu).rstrip('.npy')
-            self.otsu_dict[_basename]=np.load(otsu)
-        logging.info('read mask')
-
-    def _preprocess_mask(self):
+    def _load_mask(self):
         self.mask_dict={}
         pbar = tqdm.tqdm(glob.glob(os.path.join(self.mask_folder,'*.tif')))
         for gt_mask in pbar:
-            pbar.set_description("Processing mask %s" % gt_mask)
             if skip_slide(gt_mask):
                 continue
             _basename = os.path.basename(gt_mask).rstrip('.tif')
-            self.mask_dict[_basename]=OpenSlide(gt_mask)
+            pbar.set_description(f"Processing mask {gt_mask} - {_basename}" )
+            self.mask_dict[_basename]=gt_mask
 
-    def _preprocess_tif(self):
+
+    def _load_tif(self):
         logging.info('detecting ROI')
-        self.otsu_dict={}
+        self.tifs={}
         pbar = tqdm.tqdm(glob.glob(self.tif_folder+'/*/*.tif'))
         for tif in pbar:
-            pbar.set_description("Processing tif %s" % tif)
             if skip_slide(tif):
                 continue
             _basename = os.path.basename(tif).rstrip('.tif')
-            self.otsu_dict[_basename] =wsi.otsu_rgb(OpenSlide(tif),self.level)
+            pbar.set_description(f"Processing tif {tif} - {_basename}" )
+            self.tifs[_basename]=tif
 
-    def extract_from_single_slide(self,slide):
-        logging.info(f'extract samples from{slide}')
-        table=pd.DataFrame(columns=['slide_name','x','y','label'])
-        mag = pow(2, self.level)
-        count = 0
-        otsu=self.otsu_dict[slide]
-        _x, _y = np.where(otsu > 0)
-        mask = self.mask_dict.get(slide, None)
-        for x, y in zip(_x, _y):
-            label = 0
-            if mask:
-                label = Label(x, y, mag, self.level, self.win_size, mask)
-            x, y = int(x * mag), int(y * mag)
-            table.loc[count] = (slide, x, y, label)
-            count += 1
-        save= os.path.join(self.save_path,f'{slide}.csv')
-        table.to_csv(save, header=True)
-        logging.info(f'samples from {slide} done!!')
-        return table
 
-    def extract_all_sample_together(self,num_works=10):
+    def extract_from_single_slide(self,slidename):
         '''
-        Multithread method
-        :param num_works:
+        Ref:linhj
+        思路： 基于step, patch切割图片，然后计算OTSU和是否合适用于分析，去掉含有大量脂肪区域的patch
+        :param slide:
+        read_slide: return im (height, width X C)
         :return:
         '''
-        pool = ThreadPoolExecutor(max_workers=num_works)
-        futures = []
-        for slide in self.otsu_dict.keys():
-            future=pool.submit(self.extract_from_single_slide, slide)
-            futures.append(future)
-        return pool.shutdown(True)
-        # results=[]
-        # for future in futures:
-        #     results.append(future.result())
-        # logging.info('save tables')
-        # self.table = pd.concat(results)
-        # self.table = self.table.reset_index(drop=True)
-        # save = os.path.join(self.save_path, 'allsample.csv')
-        # self.table.to_csv(save, header=True)
+        # logging.info(f'extract samples from{slide}')
+        table=pd.DataFrame(columns=['slide_name','x','y','label'])
+        stats = {}
+        count = 0
+        try:
+            mask = OpenSlide(self.mask_dict[slidename])
+        except:
+            logging.info(f'mask {slidename} not exists!!')
+            mask = 0
+        slide=OpenSlide(self.tifs[slidename])
+        W,H=slide.level_dimensions[self.level]
+        mag = slide.level_downsamples[self.level]
+        w = self.patch_size / 2  # 取中间点
+        for col in range(int((W-self.patch_size/2)//self.step_size)):
+            h=self.patch_size/2 # 取中间点
+            for row in range(int((H-self.patch_size/2)//self.step_size)):
+                # 计算OTSU
+                otsu,white_flag=wsi.read_otsu(slide,w,h,self.otsu_level,self.patch_size,self.patch_size,white=True)
+                # 过滤掉白色区域
+                label = Label(w, h, mag, self.level, self.win_size, mask)
+                if (not white_flag and otsu.sum()>5) or label :
+                    table.loc[count] = (slidename, w, h, label)
+                    count += 1
+                    stats[label] = stats.get(label, 0) + 1
+                h += self.step_size # 下移
+            w += self.step_size  # 右移
+        save= os.path.join(self.save_path, f'{slidename}.csv')
+        logging.info(f'samples {str(stats)} from {slidename} done!!')
+        if mask != 0 and stats[1]==0:
+            logging.warning(f'{slidename} cannot find tumor')
+        table.to_csv(save, header=True)
+        return stats
 
-    def extract_all_sample(self):
-        logging.info('extract_all_sample')
-        mag = pow(2, self.level)
-        count=0
-        pbar=tqdm.tqdm(self.otsu_dict.items())
-        for slide,otsu in pbar:
-            pbar.set_description("Extracting sample from %s.tif" % slide)
-            logging.info(f'extracting samples from {slide}')
-            _x, _y = np.where(otsu > 0)
-            mask = self.mask_dict.get(slide,None)
-            # data = [(i, j) for i, j in zip(x, y)]
-            for x,y in zip(_x,_y):
-                label = 0
-                if mask:
-                    label = Label(x, y, mag, self.level, self.win_size, mask)
-                x, y = int(x*mag), int(y*mag)
-                self.table.loc[count]=(slide, x, y, label)
-                count+=1
-        save = os.path.join(self.save_path,'allsample.csv')
-        logging.info(f'save samples in {self.save_path}')
-        self.table.to_csv(self.save_path, header=True)
+
+
 
 if __name__=='__main__':
-    tif_folder = '/root/workspace/renqian/CAMELYON16/training/'
-    mask_folder='/root/workspace/renqian/CAMELYON16/mask/'
-    level=10
-    save_path='/root/workspace/renqian/20200301deeplab/patchlist/'
-    win_size=800
-    extractor=ExtractPatch(tif_folder,mask_folder,level,save_path,win_size)
-    extractor.extract_all_sample_together(10)
+    args=get_arg()
+    print(args)
+    num_works=args.n
+    tif_folder = args.tf
+    mask_folder = args.mf
+    level = args.l
+    save_path= args.s
+    win_size = args.w
+    otsu_level = args.ol
+    stepsize = args.ss
+    patch_size = args.p
+    logging.basicConfig(level=logging.INFO,filename=os.path.join(save_path,'log.txt'))
+    logging.info(f'config otsu level-{otsu_level},save:{save_path},Patch win_size:{win_size} level-{level}')
+    if not os.path.exists(save_path):
+        os.system(f'mkdir -p {save_path}')
+    extractor = ExtractPatch(tif_folder, mask_folder, level, save_path, StepSize=stepsize, patch_size=patch_size,
+                             win_size=win_size, otsu_level=otsu_level)
+    with ProcessPoolExecutor(max_workers=num_works) as pool:
+        futures= [pool.submit(extractor.extract_from_single_slide, slide) for slide in extractor.tifs.keys()]
+    concurrent.futures.wait(futures, return_when=ALL_COMPLETED)
+    stat={0:0, 1:0}
+    for future in concurrent.futures.as_completed(futures):
+        stat[0] += future.result().get(0, 0)
+        stat[1] += future.result().get(1, 0)
+    print(f"statistic :{stat}")

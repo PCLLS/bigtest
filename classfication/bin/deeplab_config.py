@@ -18,15 +18,15 @@ from classfication.data.sampler import RandomSampler
 from classfication.utils import Checkpointer
 from classfication.utils.loss import SegmentationLosses
 
-workspace = '/root/workspace/renqian/20200229deeplab/'
+workspace = '/root/workspace/renqian/20200303deeplab/'
 logging.basicConfig(level=logging.INFO,filename=os.path.join(workspace,'log.txt'))
 patch_size = 1500
 crop_size = 1280
-sample_level = 10  # 采样倍数
-dataset_path=os.path.join(workspace,'patchlist')
-win_size=800
-extractor=ExtractPatch(tif_folder,mask_folder,sample_level,dataset_path,win_size)
-extractor.extract_all_sample_together(10)
+# sample_level = 7  # 采样倍数
+dataset_path=os.path.join('/root/workspace/renqian/20200221test/','patchlist')
+# win_size=800
+# extractor=ExtractPatch(tif_folder,mask_folder,sample_level,dataset_path,win_size)
+# extractor.extract_all_sample_together(10)
 
 # 读取数据集
 # dataset_path = os.path.join('/root/workspace/renqian/20200221test/','patchlist')  # 存放dataset表格的文件夹
@@ -46,7 +46,7 @@ dataset = MaskDataset(tif_folder,mask_folder,level,patch_size,crop_size,table) #
 # 随机分割验证集和训练集
 random.shuffle(normal_csv)
 random.shuffle(tumor_csv)
-rate=0.2  # 测试集和验证集比例
+rate=0  # 测试集和验证集比例
 
 ## 训练集
 train_slides = {}
@@ -54,31 +54,32 @@ train_normal_slides = normal_csv[:int(len(normal_csv)*(1-rate))]
 train_tumor_slides = tumor_csv[:int(len(tumor_csv)*(1-rate))]
 train_slides[0] = [os.path.basename(csv).rstrip('.csv')  for csv in train_normal_slides + train_tumor_slides]
 train_slides[1] = [os.path.basename(csv).rstrip('.csv')  for csv in train_tumor_slides]
-train_sampler=RandomSampler(data_source=dataset,slides=train_slides,num_samples=200)
+train_sampler=RandomSampler(data_source=dataset,slides=train_slides,num_samples=20000)
 
 ## 验证集
-evaluate=False
-valid_slides = {}
-valid_normal_slides = normal_csv[:int(len(normal_csv)*rate)]
-valud_tumor_slides = tumor_csv[:int(len(tumor_csv)*rate)]
-valid_slides[0] =  [os.path.basename(csv).rstrip('.csv')  for csv in valid_normal_slides + valud_tumor_slides ]
-valid_slides[1] = [os.path.basename(csv).rstrip('.csv')  for csv in valud_tumor_slides ]
-valid_sampler=RandomSampler(data_source=dataset,slides=valid_slides,num_samples=40)
+# evaluate=False
+# valid_slides = {}
+# valid_normal_slides = normal_csv[:int(len(normal_csv)*rate)]
+# valud_tumor_slides = tumor_csv[:int(len(tumor_csv)*rate)]
+# valid_slides[0] =  [os.path.basename(csv).rstrip('.csv')  for csv in valid_normal_slides + valud_tumor_slides ]
+# valid_slides[1] = [os.path.basename(csv).rstrip('.csv')  for csv in valud_tumor_slides ]
+# valid_sampler=RandomSampler(data_source=dataset,slides=valid_slides,num_samples=1000)
 
 
 # 模型训练参数
 LR = 0.01
 device_ids=[0,1,2,3]
-batch_size=4
-num_workers=4
+batch_size=16
+num_workers=30
 net = DeepLab(num_classes=2, backbone='resnet',sync_bn=True, output_stride = 16,freeze_bn=False)
 net = nn.DataParallel(net,device_ids=device_ids)
 patch_replication_callback(net)
 net=net.cuda()
-out_fn = None
+out_fn = lambda x: x
 train_dataloader = DataLoader(dataset, batch_size=batch_size, sampler=train_sampler, num_workers=num_workers)
-valid_dataloader =  DataLoader(dataset, batch_size=batch_size, sampler=valid_sampler, num_workers=num_workers)
-optimizer=SGD(net.parameters(),lr=LR)
+# valid_dataloader =  DataLoader(dataset, batch_size=batch_size, sampler=valid_sampler, num_workers=num_workers)
+valid_dataloader = None
+optimizer=SGD(net.parameters(),lr=LR,weight_decay=0.9)
 start = 0 #    起始epoch
 end = 3000
 criterion = SegmentationLosses(weight=None, cuda=False).build_loss(mode='ce')
