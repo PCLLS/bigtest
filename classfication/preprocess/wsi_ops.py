@@ -81,7 +81,7 @@ class wsi(object):
         # assert tissue_mask.shape==(slide.dimensions[1] / mag,slide.dimensions[0] / mag)
         # using White flags white region
         if white:
-            if np.mean(img_RGB[:, :, 0])>200 and np.mean(img_RGB[:, :, 1])>200 and img_RGB[:, :, 2].mean()>180:
+            if np.mean(img_RGB[:, :, 0])>200 and np.mean(img_RGB[:, :, 1])>200 and img_RGB[:, :, 2].mean()>180 and tissue_mask.sum()/(width*height)<0.05:
                 white_flag=True
             else:
                 white_flag=False

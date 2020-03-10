@@ -34,9 +34,8 @@ normal_csv = glob.glob(os.path.join(dataset_path, 'normal*.csv'))
 tumor_csv = glob.glob(os.path.join(dataset_path, 'tumor_*.csv'))
 csv_list = normal_csv + tumor_csv
 tables=[]
-qbar=tqdm.tqdm(csv_list)
-
 # 此处从生成的patch的csv文件中导入，如果调用extractor，则是从返回值获取即可
+qbar = tqdm.tqdm(csv_list)
 for csv in qbar:
     qbar.set_description(f'loading csv: {csv}')
     tables.append(pd.read_csv(csv,index_col=0,header=0))
@@ -54,23 +53,16 @@ train_normal_slides = normal_csv[:int(len(normal_csv)*(1-rate))]
 train_tumor_slides = tumor_csv[:int(len(tumor_csv)*(1-rate))]
 train_slides[0] = [os.path.basename(csv).rstrip('.csv')  for csv in train_normal_slides + train_tumor_slides]
 train_slides[1] = [os.path.basename(csv).rstrip('.csv')  for csv in train_tumor_slides]
-train_sampler=RandomSampler(data_source=dataset,slides=train_slides,num_samples=20000)
+train_sampler=RandomSampler(data_source=dataset,slides=train_slides,num_samples=2000)
 
-## 验证集
-# evaluate=False
-# valid_slides = {}
-# valid_normal_slides = normal_csv[:int(len(normal_csv)*rate)]
-# valud_tumor_slides = tumor_csv[:int(len(tumor_csv)*rate)]
-# valid_slides[0] =  [os.path.basename(csv).rstrip('.csv')  for csv in valid_normal_slides + valud_tumor_slides ]
-# valid_slides[1] = [os.path.basename(csv).rstrip('.csv')  for csv in valud_tumor_slides ]
-# valid_sampler=RandomSampler(data_source=dataset,slides=valid_slides,num_samples=1000)
+
 
 
 # 模型训练参数
 LR = 0.01
 device_ids=[0,1,2,3]
-batch_size=16
-num_workers=30
+batch_size=8
+num_workers=20
 net = DeepLab(num_classes=2, backbone='resnet',sync_bn=True, output_stride = 16,freeze_bn=False)
 net = nn.DataParallel(net,device_ids=device_ids)
 patch_replication_callback(net)
@@ -78,6 +70,7 @@ net=net.cuda()
 out_fn = lambda x: x
 train_dataloader = DataLoader(dataset, batch_size=batch_size, sampler=train_sampler, num_workers=num_workers)
 # valid_dataloader =  DataLoader(dataset, batch_size=batch_size, sampler=valid_sampler, num_workers=num_workers)
+evaluate = False
 valid_dataloader = None
 optimizer=SGD(net.parameters(),lr=LR,weight_decay=0.9)
 start = 0 #    起始epoch

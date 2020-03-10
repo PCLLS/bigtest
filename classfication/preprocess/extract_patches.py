@@ -9,6 +9,7 @@ from classfication.preprocess.wsi_ops import wsi
 from concurrent.futures import ThreadPoolExecutor,ProcessPoolExecutor,ALL_COMPLETED
 import concurrent.futures
 import argparse
+import matplotlib.pyplot as plt
 def get_arg():
     parser = argparse.ArgumentParser()
     parser.add_argument("-n","-num_works",type=int,default=20,help='num of workers')
@@ -104,15 +105,15 @@ class ExtractPatch:
         slide=OpenSlide(self.tifs[slidename])
         W,H=slide.level_dimensions[self.level]
         mag = slide.level_downsamples[self.level]
-        w = self.patch_size / 2  # 取中间点
+        w = self.patch_size // 2  # 取中间点
         for col in range(int((W-self.patch_size/2)//self.step_size)):
-            h=self.patch_size/2 # 取中间点
+            h=self.patch_size// 2 # 取中间点
             for row in range(int((H-self.patch_size/2)//self.step_size)):
                 # 计算OTSU
-                otsu,white_flag=wsi.read_otsu(slide,w,h,self.otsu_level,self.patch_size,self.patch_size,white=True)
+                otsu,white_flag=wsi.read_otsu(slide,w,h,self.otsu_level,self.win_size,self.win_size, white=True)
                 # 过滤掉白色区域
                 label = Label(w, h, mag, self.level, self.win_size, mask)
-                if (not white_flag and otsu.sum()>5) or label :
+                if not white_flag or label :
                     table.loc[count] = (slidename, w, h, label)
                     count += 1
                     stats[label] = stats.get(label, 0) + 1
@@ -149,8 +150,24 @@ if __name__=='__main__':
     with ProcessPoolExecutor(max_workers=num_works) as pool:
         futures= [pool.submit(extractor.extract_from_single_slide, slide) for slide in extractor.tifs.keys()]
     concurrent.futures.wait(futures, return_when=ALL_COMPLETED)
-    stat={0:0, 1:0}
+    stat={0:[], 1:[]}
     for future in concurrent.futures.as_completed(futures):
-        stat[0] += future.result().get(0, 0)
-        stat[1] += future.result().get(1, 0)
+        stat[0].append(future.result().get(0, 0))
+        if futures.get(1,0):
+            stat[1].append(future.result()[1])
+    stat[0]=np.array(stat[0])
+    stat[1]=np.array(stat[1])
+    # 可视化结果
+    figs, axs = plt.subplots(nrows=1, ncols=2)
+    axs[0].boxplot([stat[0], stat[1]], labels=['nomral', 'tumor'])
+    axs[0].set_title('distribution of numbers of patches')
+    axs[1].spines['top'].set_visible(False)
+    axs[1].spines['right'].set_visible(False)
+    axs[1].spines['bottom'].set_visible(False)
+    axs[1].spines['left'].set_visible(False)
+    axs[1].set_xticks([])
+    axs[1].set_yticks([])
+    axs[1].text(0, 0.5, s=f'normal: {stat[0].sum()}\nmean:{stat[0].mean()},std:{stat[0].std()}\n \
+                tumor:{stat[1].sum()}\nmean:{stat[1].mean()},std:{stat[1].std()}')
+    plt.savefig(os.path.join(save_path,'boxplot.png'))
     print(f"statistic :{stat}")

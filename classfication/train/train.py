@@ -72,10 +72,8 @@ class Train:
         TN = len(TNs)
         total = total_pos + total_neg
         total_acc = (TP + TN) / total
-        pos_acc = TP / total_pos
-        neg_acc = TN / total_neg
         logging.info(f'pos_acc:{total_pos},neg_acc:{total_neg}, acc:{total_acc} in validation')
         hard_neg_example=pd.DataFrame()
         if save_hard_example:
             hard_neg_example=self.dataset.table.loc[FPs]
-        return total_acc, pos_acc, neg_acc,losses.avg,hard_neg_example
+        return total_acc, losses.avg,hard_neg_example
