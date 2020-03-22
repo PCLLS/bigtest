@@ -1,4 +1,4 @@
-def acc_metric(output, target, thredshold=0.5):
+def acc_metric(output, target, return_list=False,thredshold=0.5):
     """
     :param output:model classification output
     :param target:ground truth label
@@ -27,7 +27,10 @@ def acc_metric(output, target, thredshold=0.5):
             else:
                 FPs.append(index)
         index += 1
-    return  TPs, FPs,TNs, FNs, total_pos, total_neg
+    if return_list:
+        return  TPs, FPs,TNs, FNs, total_pos, total_neg
+    else:
+        return len(TPs),len(FPs),len(TNs),len(FNs),total_pos,total_neg
 
 class Counter(object):
     """统计均值的类

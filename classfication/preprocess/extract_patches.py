@@ -94,6 +94,7 @@ class ExtractPatch:
         :return: stats about patch points
         '''
         # logging.info(f'extract samples from{slide}')
+        stats = {0: 0, 1: 0}
         save= os.path.join(self.save_path, f'{slidename}.csv')
         if os.path.exists(save):
             table=pd.read_csv(save,index_col=0,header=0)
@@ -101,7 +102,7 @@ class ExtractPatch:
             stats[1]=(table['label']==1).sum()
             return stats
         table=pd.DataFrame(columns=['slide_name','x','y','label'])
-        stats = {0:0,1:0}
+
         count = 0
         try:
             mask = OpenSlide(self.mask_dict[slidename])

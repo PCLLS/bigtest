@@ -33,7 +33,6 @@ class NMS(object):
             x_wsi = int((x_mask + 0.5) * mag)
             y_wsi = int((y_mask + 0.5) * mag)
             outfile.write('{:0.5f},{},{}'.format(prob_max, x_wsi, y_wsi) + '\n')
-
             x_min = x_mask - self.radius if x_mask - self.radius > 0 else 0
             x_max = x_mask + self.radius if x_mask + self.radius <= X else X
             y_min = y_mask - self.radius if y_mask - self.radius > 0 else 0
