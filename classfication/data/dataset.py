@@ -7,7 +7,6 @@ from torchvision import transforms
 from classfication.preprocess.wsi_ops import wsi
 from PIL import Image
 import pandas as pd
-import pdb
 class MaskDataset():
     def __init__(self,tif_folder,mask_folder,level,patch_size,crop_size,table):
         """
@@ -30,11 +29,11 @@ class MaskDataset():
         self._preprocess()
 
     def _preprocess(self):
-        tif_list = glob.glob(os.path.join(self.tif_folder, '*.tif'))
+        tif_list = glob.glob(os.path.join(self.tif_folder, '*/*.tif'))
         if tif_list==[]:
             raise ValueError('tif folder should include tif files.')
         logging.info(f"loading tifs from {self.tif_folder}")
-        mask_list = glob.glob(os.path.join(self.mask_folder, '*.tif'))
+        mask_list = glob.glob(os.path.join(self.mask_folder, '*/*.tif'))
         if tif_list == []:
             raise ValueError('mask folder should include mask files(.tif).')
         self.patch_size = self.patch_size
@@ -68,7 +67,7 @@ class MaskDataset():
         img = wsi.read_slide(slide,_x,_y,self.level,self.patch_size,self.patch_size) # numpy.array
         try:
             mask = self.mask_dict[slide_name]
-            target = wsi.read_slide(mask,_x,_y,0,self.patch_size,self.patch_size) #numpy.array
+            target = wsi.read_slide(mask,_x,_y,self.level,self.patch_size,self.patch_size) #numpy.array
         except:
             target = np.zeros_like(img)
         # data augmentation
@@ -145,7 +144,7 @@ class ListDataset():
         :return:
         '''
 
-        tif_list = glob.glob(os.path.join(self.tif_folder, '*.tif'))
+        tif_list = glob.glob(os.path.join(self.tif_folder, '*/*.tif'))
         if tif_list==[]:
             raise ValueError('tif folder should include tif files.')
         logging.info(f"loading tifs from {self.tif_folder}")

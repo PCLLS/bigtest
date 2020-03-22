@@ -1,3 +1,6 @@
+import sys,os
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(BASE_DIR)
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -77,3 +80,4 @@ if __name__ == "__main__":
     input = torch.rand(4, 3, 513, 513)
     output = model(input)
     print(output.size())
+    print(F.softmax(output,dim=1)[:,1,:,:].shape)

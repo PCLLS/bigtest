@@ -36,7 +36,6 @@ class Train:
             print(f"input size: {inputs.size()}")
             inputs, labels = inputs.cuda(), labels.cpu()
             outputs = self.net(inputs).cpu()
-            # print(outputs.size())
             loss = self.criterion(outputs, labels)
             self.optimizer.zero_grad()
             loss.backward()

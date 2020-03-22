@@ -1,6 +1,7 @@
 import sys,os,logging,glob,random,tqdm
 import pandas as pd
-sys.path.append('../../')
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(BASE_DIR)
 from classfication.bin.config import *
 import torch
 from torch.optim import *
@@ -53,7 +54,7 @@ for csv in qbar:
     qbar.set_description(f'loading csv: {csv}')
     tables.append(pd.read_csv(csv,index_col=0,header=0))
 table=pd.concat(tables).reset_index(drop=True)
-dataset = ListDataset(tif_folder,mask_folder,level,patch_size,crop_size,table) # 训练集所有数据导入
+dataset = ListDataset(TRAINSET,MASK_FOLDER,level,patch_size,crop_size,table) # 训练集所有数据导入
 # 随机分割验证集和训练集
 random.shuffle(normal_csv)
 random.shuffle(tumor_csv)
@@ -78,24 +79,23 @@ valid_sampler=RandomSampler(data_source=dataset,slides=valid_slides,num_samples=
 
 # 模型训练参数
 LR = 0.1
-device_ids=[0,1,2,3]
 batch_size=4
 num_workers=4
-net = nn.DataParallel(Inception3(num_classes=2,aux_logits=False),device_ids=device_ids)
+net = nn.DataParallel(Inception3(num_classes=2,aux_logits=False))
 out_fn = lambda x:x[0]
 train_dataloader = DataLoader(dataset, batch_size=batch_size, sampler=train_sampler, num_workers=num_workers)
 valid_dataloader =  DataLoader(dataset, batch_size=batch_size, sampler=valid_sampler, num_workers=num_workers)
 optimizer=Adam(net.parameters(),lr=LR, betas=(0.9, 0.99),weight_decay=0.1)
 start = 0 #    起始epoch
 end = 3000
-loss = nn.CrossEntropyLoss()
+criterion = nn.CrossEntropyLoss()
 train_model_save = os.path.join(workspace,'train','model')
 train_visual = os.path.join(workspace,'train','visualization')
 
 #  ===================no need change===================
 ### 保存模型
 if not os.path.exists(train_model_save):
-        os.system(f"mkdir -p {train_model_save}")
+    os.system(f"mkdir -p {train_model_save}")
 ckpter = Checkpointer(train_model_save)
 ckpt = ckpter.load(start)
 last_epoch = -1

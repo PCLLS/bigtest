@@ -1,6 +1,6 @@
-import sys
-sys.path.append('../..')
-from classfication.bin.config import *
+import sys,os
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(BASE_DIR)
 import classfication.train
 import classfication.data as data
 from classfication.train import Train

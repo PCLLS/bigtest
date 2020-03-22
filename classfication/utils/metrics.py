@@ -19,13 +19,13 @@ def acc_metric(output, target, thredshold=0.5):
             if pred_label:
                 TPs.append(index)
             else:
-                FPs.append(index)
+                FNs.append(index)
         else:
             total_neg += 1
             if not pred_label:
                 TNs.append(index)
             else:
-                FNs.append(index)
+                FPs.append(index)
         index += 1
     return  TPs, FPs,TNs, FNs, total_pos, total_neg
 
