@@ -86,7 +86,7 @@ valid_dataloader =  DataLoader(dataset, batch_size=batch_size, sampler=valid_sam
 optimizer=Adam(net.parameters(),lr=LR, betas=(0.9, 0.99),weight_decay=0.1)
 start = 0 #    起始epoch
 end = 3000
-evaluate=False
+evaluate=True
 criterion = nn.CrossEntropyLoss()
 train_model_save = os.path.join(workspace,'train','model')
 train_visual = os.path.join(workspace,'train','visualization')

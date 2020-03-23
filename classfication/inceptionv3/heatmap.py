@@ -26,7 +26,7 @@ logging.basicConfig(level=logging.INFO,filename=os.path.join(workspace,'heatmap_
 #label_win_size = 150  # label根据的win大小
 
 level = 0  # 训练图片的倍数
-patch_size = 300
+patch_size = 299
 crop_size = 299
 grid_size = 128
 # 读取数据集
@@ -45,23 +45,22 @@ dataset = ListDataset(TESTSET,MASK_FOLDER,level,patch_size * pow(2,level),crop_s
 
 # print(dataset.table.head())
 test_slides = {}
-test_slides_csv = test_csv[:int(len(test_csv))]
+test_slides_csv = test_csv
 test_slides[0] = [os.path.basename(csv).rstrip('.csv')  for csv in test_slides_csv]
 
 
-start = 99
-batch_size=3
+start = 54
+batch_size=8
 num_workers= 10
 
-os.environ["CUDA_VISIBLE_DEVICES"] = '1'
-train_model_save = '/root/workspace/output/inceptionv3/train/model/'
-save = '/root/workspace/output/inceptionv3/heatmap/'
+# os.environ["CUDA_VISIBLE_DEVICES"] = '1'
+train_model_save = '/root/workspace/renqian/test/inceptionv3/train/model'
+save = '/root/workspace/renqian/test/inceptionv3/heatmap128/'
 ckpter = Checkpointer(train_model_save)
 ckpt = ckpter.load(start)
 net = nn.DataParallel(Inception3(num_classes=2,aux_logits=False))
 net.load_state_dict(ckpt[0])
+net = net.cuda()
 test_dataloader = DataLoader(dataset, batch_size=batch_size, num_workers=num_workers,shuffle=False)
-
 heatmap = ProbsMap(dataset,test_dataloader,save, net, grid_size, tif_folder=TESTSET)
-
 heatmap.gen_heatmap()

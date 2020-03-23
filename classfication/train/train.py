@@ -12,7 +12,6 @@ try:
     from tensorboardX import SummaryWriter
 except ImportError:
     from torch.utils.tensorboard import SummaryWriter
-import torch.nn.functional as F
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../')
 from  classfication.utils.metrics import *
 
@@ -44,35 +43,22 @@ class Train:
             losses.addval(loss.item(), len(outputs))
         return losses.avg
 
-    def eval_epoch(self,save_hard_example=None):
+    def eval_epoch(self):
+        metrics = Metric()
         self.net.eval()
-        TPs, FPs, TNs, FNs=[],[],[],[]
-        total_pos=0
-        total_neg=0
         losses = Counter()
         qbar = tqdm.tqdm(self.eval_dataloader, dynamic_ncols=True, leave=False)
         hard_neg_example=[]
         for i, data in enumerate(qbar, 0):
-            inputs, labels, patch_list = data
+            inputs, labels, indexes = data
             inputs, labels = inputs.cuda(), labels.cuda()
             outputs = self.net(inputs).squeeze().cuda()
             loss = self.criterion(outputs, labels)
             if self.out_fn != None:
                 outputs = self.out_fn(outputs)
-            tps, fps, tns, fns, pos, neg = acc_metric(outputs, labels, 0.5)
-            TPs +=tps
-            FPs +=fps
-            TNs += tns
-            FNs += fns
-            total_pos += pos
-            total_neg += neg
+            metrics.add_data(outputs,labels,indexes)
             losses.addval(loss.item(), len(outputs))
-        TP = len(TPs)
-        TN = len(TNs)
-        total = total_pos + total_neg
-        total_acc = (TP + TN) / total
-        logging.info(f'pos_acc:{total_pos},neg_acc:{total_neg}, acc:{total_acc} in validation')
-        hard_neg_example=pd.DataFrame()
-        if save_hard_example:
-            hard_neg_example=self.dataset.table.loc[FPs]
-        return total_acc, losses.avg,hard_neg_example
+        logging.info(f'accuracy:{metrics.get_accuracy()},\n precision:{metrics.get_precision()},\n sensitivity:{metrics.get_sensitivity()},\nF1:{metrics.get_F1()}')
+        return metrics, losses.avg
+
+# TODO: 如何导入hard——example的代码还需要仔细思考再去复现

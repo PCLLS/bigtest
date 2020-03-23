@@ -11,7 +11,7 @@ import torch.nn.functional as F
 from classfication.utils.config import TESTSET
 from classfication.preprocess.wsi_ops import wsi
 from openslide import OpenSlide
-from classfication.utils.metrics import  acc_metric
+from classfication.utils.metrics import  Metric
 class ProbsMap:
     def __init__(self,dataset,dataloader,save, model, grid_size, tif_folder=TESTSET):
         '''
@@ -44,10 +44,11 @@ class ProbsMap:
         outputs: model output wize shape [N,Channel,row,col]
         '''
         TP,FP,TN,FN =0,0,0,0
+        metric=Metric()
         for (data,targets,indexes) in self.dataloader:
             #data = Variable(data.cuda(async=True), volatile=True)
-            data.cuda()
-            outputs = self.model(data)
+            data, targets = data.cuda(),targets.cpu()
+            outputs = self.model(data).cpu()
             #print ('---checking out put shape',outputs.shape)
             #n,channel,h,w=outputs.shape
             if len(outputs.shape)==4:
@@ -55,7 +56,8 @@ class ProbsMap:
             else:
                 n, c = outputs.shape
                 h, w = 1, 1
-            outputs = F.softmax(outputs,dim=1)
+            outputs = F.softmax(outputs,dim=1)[:,1]
+            metric.add_data(outputs,targets,indexes)
             for i in range(outputs.shape[0]):
                 slidename, x, y, label = self.dataset.table.loc[int(indexes[i])]
                 if slidename not in self.queue:
@@ -74,8 +76,9 @@ class ProbsMap:
                         print(slidename, x, y, label,col,row)
         save = os.path.join(self.save,self.queue[-1])
         np.save(f'{save}.npy',probs_map)
-        if TP:
-            logging.info(f"FP:{FP},TP:{TP},TN:{TN},FN:{FN}")
+        logging.info(f"FP:{metric.FP},TP:{metric.TP},TN:{metric.TN},FN:{metric.FN}")
+        logging.info(f"sensitive:{metric.get_sensitivity()}\taccuracy:{metric.get_accuracy()}\tprecision:{metric.get_precision()}")
+        logging.info(f"F1:{metric.get_F1()}\tspecificity:{metric.get_specificity()}")
 
 class OpHeatmap(object):
     @staticmethod
@@ -104,7 +107,7 @@ class OpHeatmap(object):
         return data
 
     @staticmethod
-    def to_csv(heatmap:np.array,start_point:int,interval:,save:str,threshold=0.5):
+    def to_csv(heatmap:np.array,start_point:int,interval:int,save:str,threshold=0.5):
         x_start,y_start = start_point
         outfile = open(save, 'w')
         if threshold:

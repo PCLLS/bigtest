@@ -28,7 +28,7 @@ class RandomSampler(Sampler):
             is supposed to be specified only when `replacement` is ``True``. 用于设置每轮实际采样数
     """
 
-    def __init__(self, data_source, slides=None,num_samples=None):
+    def __init__(self, data_source, slides=None,num_samples=None,labels=[0,1]):
         '''
 
         :param data_source:  需要处理的dataset
@@ -39,9 +39,15 @@ class RandomSampler(Sampler):
         self._num_samples = num_samples
         self.slides=slides
         self._sampled=set()
+        self.labels=labels
         if not isinstance(self.num_samples, int) or self.num_samples <= 0:
             raise ValueError("num_samples should be a positive integer "
                              "value, but got num_samples={}".format(self.num_samples))
+        self.query_hist = {} # pre-query this can speed up sample
+        for label in labels:
+            query = self.data_source.table.query(f'(label=={label})')
+            for slide in self.slides[labels]:
+                self.query_hist[(label,slide)]=query[query['slide_name'] == slide].index
 
     @property
     def num_samples(self):
@@ -51,13 +57,11 @@ class RandomSampler(Sampler):
         return self._num_samples
 
     def sample(self):
-        labels = [0, 1]  # labels
         # random choice labels and slides
-        label = np.random.choice(labels)
-        query = self.data_source.table.query(f'(label=={label})')
-        tumor_slide = np.random.choice(self.slides[label])
-        slide = np.random.choice(query['slide_name'].unique())
-        sample_index = query[query['slide_name'] == slide].sample().index[0]
+        label = np.random.choice(self.labels)
+        slide = np.random.choice(self.slides[label])
+        indexes = self.query_hist[(label,slide)]
+        sample_index = np.random.choice(indexes)
         return sample_index
 
     def __iter__(self):

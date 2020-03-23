@@ -1,3 +1,6 @@
+import torch
+import sklearn.metrics
+import logging
 def acc_metric(output, target, return_list=False,thredshold=0.5):
     """
     :param output:model classification output
@@ -99,3 +102,37 @@ class Counter(object):
             return self.val_list[-1] - self.key_to_val[key_st]
         else:
             return self.key_to_val[key_ed] - self.key_to_val[key_st]
+
+class Metric:
+    def __init__(self,threshold=0.5):
+        self.TP,self.FP,self.TN,self.FN =0, 0, 0, 0
+        self.threshold = threshold
+        self.FN_list=[]
+        self.FP_list=[]
+
+    def add_data(self,predict,target,indexes):
+        predict=predict>self.threshold
+        # print(f'{predict.shape},{target.shape}')
+        self.TP += torch.sum(((predict==1)+(target==1))==2)
+        self.FP += torch.sum(((predict==1)+(target==0))==2)
+        self.TN += torch.sum(((predict==1)+(target==0))==2)
+        self.FN += torch.sum(((predict == 0) + (target == 1)) == 2)
+
+
+    def get_accuracy(self):
+        return float(self.TP+self.TN)/float(self.TP+self.TN+self.FP+self.FN)
+
+    def get_sensitivity(self):
+        return float(self.TP)/float(self.TP+self.FN + 1e-6)
+
+    def get_specificity(self):
+        return float(self.TN)/float(self.TN+self.FP + 1e-6)
+
+    def get_precision(self):
+        return float(self.TP)/float(self.TP+self.FP + 1e-6)
+
+    def get_F1(self):
+        SE = self.get_sensitivity()
+        PC = self.get_precision()
+        return 2*SE*PC/(SE+PC + 1e-6)
+

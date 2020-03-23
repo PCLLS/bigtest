@@ -177,9 +177,10 @@ class ListDataset():
         :param target: PIL
         :return:
         '''
-        xloc = np.random.randint(0,self.patch_size-self.crop_size)
-        yloc = np.random.randint(0,self.patch_size-self.crop_size)
-        img = img.crop((xloc,yloc,xloc+self.crop_size,yloc+self.crop_size))
+        if self.patch_size-self.crop_size:
+            xloc = np.random.randint(0,self.patch_size-self.crop_size)
+            yloc = np.random.randint(0,self.patch_size-self.crop_size)
+            img = img.crop((xloc,yloc,xloc+self.crop_size,yloc+self.crop_size))
         return img
 
     def _random_rotate(self,img):

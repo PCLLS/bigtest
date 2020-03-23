@@ -1,9 +1,9 @@
-import sys
-
-sys.path.append('../..')
+import sys,os
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(BASE_DIR)
 from classfication.train import Train
 # 基于config模板导入具体参数
-from  inception_config import *
+from inception_config import *
 
 # ==============do not need change value below if not necessary======================
 
@@ -24,7 +24,7 @@ for epoch in range(start, end):
         "last_epoch": epoch,
     }
     if evaluate:
-        total_acc, pos_acc, neg_acc, loss, hard_neg_example = train.eval_epoch()
+        metric, = train.eval_epoch()
         ckpter.save(epoch, state_dict, total_acc)
         if total_acc > best_valid_acc:
             best_epoch = epoch
