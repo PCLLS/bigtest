@@ -82,14 +82,19 @@ class ProbsMap:
 
 class OpHeatmap(object):
     @staticmethod
-    def visualization(heatmap,grid_size:int,mask_slide:OpenSlide, origin_slide:OpenSlide,save):
-        mask = mask_slide.get_thumbnail((mask_slide.dimensions[0]/grid_size,mask_slide.dimensions[0]/grid_size))
-        origin = origin_slide.get_thumbnail((origin_slide.dimensions[0]/grid_size,origin_slide.dimensions[0]/grid_size))
+    def visualization(heatmap,grid_size:int,mask_slide, origin_slide,save):
+
+        origin = origin_slide.get_thumbnail((origin_slide.dimensions[0]/grid_size,origin_slide.dimensions[1]/grid_size))
         otsu = wsi.otsu(origin_slide, grid_size)
         fig, axes = plt.subplots(1, 4, figsize=(20, 20), dpi=100)
         axes[0].imshow(heatmap)
         axes[0].set_title('Heatmap')
-        axes[1].imshow(np.asarray(mask)[:,:,0])
+        if mask_slide:
+            mask = mask_slide.get_thumbnail((mask_slide.dimensions[0] / grid_size, mask_slide.dimensions[1] / grid_size))
+            mask = np.asarray(mask)[:, :, 0]
+        else:
+            mask = np.zeros_like(heatmap)
+        axes[1].imshow(mask)
         axes[1].set_title('GT')
         axes[2].imshow(np.asarray(origin))
         axes[2].set_title('Origin')
@@ -126,4 +131,19 @@ class OpHeatmap(object):
                 probs,x,y = i.rstrip().split(',')
                 probs,i ,j=float(probs),float(x)//interval,float(y)//interval
                 heatmap[i,j]=probs
-        np.save(save,heatmap)
+        if save:
+            np.save(save,heatmap)
+        else:
+            return heatmap
+
+    def gt_to_heatmap(csvfile:str,size,interval:int,save:str):
+        heatmap = np.zeros(size)
+        with open(csvfile, 'r')as f:
+            for line in f.readlines()[1:]:
+                index, slidename, x, y, label = line.rstrip().split(',')
+                label, i, j = float(label), float(y) // interval, float(x) // interval
+                heatmap[int(i), int(j)] = label
+        if save:
+            np.save(save,heatmap)
+        else:
+            return heatmap

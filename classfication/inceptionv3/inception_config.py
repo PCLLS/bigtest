@@ -17,7 +17,7 @@ from classfication.preprocess.extract_patches import ExtractPatch
 from classfication.data.dataset import ListDataset
 from classfication.data.sampler import RandomSampler
 from classfication.utils import Checkpointer
-
+import torch.nn.functional as F
 '''
 生成结果文件布局：
 workspace：
@@ -80,7 +80,7 @@ LR = 0.1
 batch_size=32
 num_workers=20
 net = nn.DataParallel(Inception3(num_classes=2,aux_logits=False))
-out_fn = lambda x:x[0]
+out_fn = lambda x:F.softmax(x)[:,1]
 train_dataloader = DataLoader(dataset, batch_size=batch_size, sampler=train_sampler, num_workers=num_workers)
 valid_dataloader =  DataLoader(dataset, batch_size=batch_size, sampler=valid_sampler, num_workers=num_workers)
 optimizer=Adam(net.parameters(),lr=LR, betas=(0.9, 0.99),weight_decay=0.1)

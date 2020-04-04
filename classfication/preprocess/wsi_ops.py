@@ -31,7 +31,7 @@ class wsi(object):
         return im
 
     @staticmethod
-    def otsu(slide,level,save=None):
+    def otsu(slide,mag,save=None):
         '''
         Provide by 黄
         :param slide:
@@ -39,7 +39,6 @@ class wsi(object):
         :return:
         '''
         assert isinstance(slide, openslide.OpenSlide)
-        mag = pow(2, level)
         thumbnail = slide.get_thumbnail((slide.dimensions[0] / mag, slide.dimensions[1] / mag)).convert('RGB')
         img_RGB = np.array(thumbnail)
         img_HSV = rgb2hsv(img_RGB)

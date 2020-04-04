@@ -16,49 +16,57 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../')
 from  classfication.utils.metrics import *
 
 class Train:
-    def __init__(self,optimizer,net,workspace,criterion, dataset,train_dataloader, eval_dataloader, out_fn=None):
+    def __init__(self,optimizer,net,workspace,criterion,out_fn=None):
         self.optimizer = optimizer
         self.net = net
         self.criterion = criterion
         self.out_fn = out_fn
         self.workspace = workspace
-        self.train_dataloader = train_dataloader
-        self.eval_dataloader = eval_dataloader
-        self.dataset=dataset
 
-    def train_epoch(self):
+    def train_epoch(self,train_dataloader):
         self.net.train()
-        losses = Counter()
-        qbar=tqdm.tqdm(self.train_dataloader, dynamic_ncols=True, leave=False)
+        metrics = Metric()
+        qbar=tqdm.tqdm(train_dataloader, dynamic_ncols=True, leave=False)
         for i,data in enumerate(qbar,0):
-            inputs, labels, patch_list = data
-            print(f"input size: {inputs.size()}")
+            inputs, labels, indexes = data
             inputs, labels = inputs.cuda(), labels.cpu()
             outputs = self.net(inputs).cpu()
             loss = self.criterion(outputs, labels)
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
-            qbar.set_description(f'Train Loss:{loss:.4f}')
-            losses.addval(loss.item(), len(outputs))
-        return losses.avg
+            probs = self.out_fn(outputs)
+            metrics.add_data(probs, labels, indexes,loss)
+            qbar.set_description(f'Train Loss:{loss:.4f},acc:{metrics.get_accuracy():.4f},pos:{metrics.get_precision():.4f},neg:{metrics.get_precision2():.4f}-tumor_ratio:{metrics.tumor_ratio():.4f}')
+            outputs = self.out_fn(outputs)
+        return metrics
 
-    def eval_epoch(self):
+    def eval_epoch(self,eval_dataloader):
         metrics = Metric()
         self.net.eval()
-        losses = Counter()
-        qbar = tqdm.tqdm(self.eval_dataloader, dynamic_ncols=True, leave=False)
+        qbar = tqdm.tqdm(eval_dataloader, dynamic_ncols=True, leave=False)
         hard_neg_example=[]
         for i, data in enumerate(qbar, 0):
             inputs, labels, indexes = data
             inputs, labels = inputs.cuda(), labels.cuda()
             outputs = self.net(inputs).squeeze().cuda()
             loss = self.criterion(outputs, labels)
-            if self.out_fn != None:
-                outputs = self.out_fn(outputs)
-            metrics.add_data(outputs,labels,indexes)
-            losses.addval(loss.item(), len(outputs))
-        logging.info(f'accuracy:{metrics.get_accuracy()},\n precision:{metrics.get_precision()},\n sensitivity:{metrics.get_sensitivity()},\nF1:{metrics.get_F1()}')
-        return metrics, losses.avg
+            probs = self.out_fn(outputs).cpu()
+            metrics.add_data(probs, labels, indexes,loss)
+            qbar.set_description(f'accuracy:{metrics.get_accuracy():.4f}, pos:{metrics.get_precision():.4f},neg:{metrics.get_precision2():.4f}-tumor_ratio:{metrics.tumor_ratio():.4f}')
+        return metrics
 
-# TODO: 如何导入hard——example的代码还需要仔细思考再去复现
+    def hard_epoch(self,hard_dataloader):
+        metrics = Metric()
+        self.net.eval()
+        qbar = tqdm.tqdm(hard_dataloader, dynamic_ncols=True, leave=False)
+        hard_neg_example=[]
+        for i, data in enumerate(qbar, 0):
+            inputs, labels, indexes = data
+            inputs, labels = inputs.cuda(), labels.cuda()
+            outputs = self.net(inputs).squeeze().cuda()
+            loss = self.criterion(outputs, labels)
+            probs = self.out_fn(outputs).cpu()
+            metrics.add_data(probs, labels, indexes,loss)
+            qbar.set_description(f'accuracy:{metrics.get_accuracy():.4f}, pos:{metrics.get_precision():.4f},neg:{metrics.get_precision2():.4f}-tumor_ratio:{metrics.tumor_ratio():.4f}')
+        return metrics

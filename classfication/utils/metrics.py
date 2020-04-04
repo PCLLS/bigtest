@@ -1,138 +1,55 @@
 import torch
 import sklearn.metrics
 import logging
-def acc_metric(output, target, return_list=False,thredshold=0.5):
-    """
-    :param output:model classification output
-    :param target:ground truth label
-    :param threshold:正样本的阈值
-    return 返回这个batch size的准确率,total,pos,neg
-    """
-    total_pos = 0
-    total_neg = 0
-    index=0
-    TPs = []
-    FPs = []
-    TNs = []
-    FNs = []
-    for _o,_t in zip(output,target):
-        pred_label = True if _o > thredshold else False
-        if int(_t) :
-            total_pos += 1
-            if pred_label:
-                TPs.append(index)
-            else:
-                FNs.append(index)
-        else:
-            total_neg += 1
-            if not pred_label:
-                TNs.append(index)
-            else:
-                FPs.append(index)
-        index += 1
-    if return_list:
-        return  TPs, FPs,TNs, FNs, total_pos, total_neg
-    else:
-        return len(TPs),len(FPs),len(TNs),len(FNs),total_pos,total_neg
+import numpy as np
 
-class Counter(object):
-    """统计均值的类
-
-    Attributes：
-        val_current:最后一次更新的结果
-        val_list:所有val的历史记录
-        avg:平均值
-        sum:总数
-        count:len(val_list)，计数次数
-
-    Example:
-        time_counter = Counter()
-        time_counter.update(time.time)
-        #... some code here
-        time_counter.update(time.time)
-        return time_counter.interval(1)
-    """
-
-    def __init__(self):
-        self.val_current = 0
-        self.val_list = []
-        self.avg = 0
-        self.sum = 0
-        self.count = 0
-        self.key_to_val = {}
-
-    def reset(self):
-        self.val_current = 0
-        self.val_list = []
-        self.avg = 0
-        self.sum = 0
-        self.count = 0
-
-    def addval(self, val, n=1, key=''):
-        self.val_current = val
-        self.val_list.append(val)
-        self.sum += val * n
-        self.count += n
-        self.avg = self.sum / self.count
-        if key != '':
-            self.key_to_val[key] = val
-
-    def interval(self, interval=1):
-        """
-        返回间隔的计数
-        :param interval:间隔，默认返回最近两个的差
-        :return:
-        """
-        if interval < self.count:
-            return self.val_list[-1] - self.val_list[-1 - interval]
-        else:
-            return "error: interval out of range。"
-
-    def key_interval(self, key_st='', key_ed=''):
-        """
-        以key的方式返回间隔
-        :param key_st:required，返回的起点
-        :param key_ed:计数终点
-        :return:
-        """
-        if key_st == '' and key_ed == '':
-            return "error: interval key miss"
-
-        if key_ed == '':
-            return self.val_list[-1] - self.key_to_val[key_st]
-        else:
-            return self.key_to_val[key_ed] - self.key_to_val[key_st]
 
 class Metric:
-    def __init__(self,threshold=0.5):
-        self.TP,self.FP,self.TN,self.FN =0, 0, 0, 0
+    r'''all data from torch would be converted into numpy.array. So All you need  is just konwing numpy opration
+    '''
+
+    def __init__(self, threshold=0.5):
+        self.TP, self.FP, self.TN, self.FN = 0, 0, 0, 0
         self.threshold = threshold
-        self.FN_list=[]
-        self.FP_list=[]
+        self.FN_list = []
+        self.FP_list = []
+        self.losses = []
 
-    def add_data(self,predict,target,indexes):
-        predict=predict>self.threshold
-        # print(f'{predict.shape},{target.shape}')
-        self.TP += torch.sum(((predict==1)+(target==1))==2)
-        self.FP += torch.sum(((predict==1)+(target==0))==2)
-        self.TN += torch.sum(((predict==1)+(target==0))==2)
-        self.FN += torch.sum(((predict == 0) + (target == 1)) == 2)
+    def add_data(self, predict, target, indexes, loss):
+        predict = (predict > self.threshold).numpy()
+        target = target.numpy()
+        assert predict.shape == target.shape
+        if predict.shape == indexes.shape:
+            self.FP_list += list(indexes[(predict == 1) * (target == 0)])
+            self.FN_list += list(indexes[(predict == 0) * (target == 1)])
+        self.TP += np.sum((predict == 1) * (target == 1))
+        self.FP += np.sum((predict == 1) * (target == 0))
+        self.TN += np.sum((predict == 0) * (target == 0))
+        self.FN += np.sum((predict == 0) * (target == 1))
+        self.losses.append(loss)
 
+    def get_loss(self):
+        return np.sum(self.losses) / len(self.losses)
 
     def get_accuracy(self):
-        return float(self.TP+self.TN)/float(self.TP+self.TN+self.FP+self.FN)
+        return self.TP + self.TN / (self.TP + self.TN + self.FP + self.FN + 1e-6)
 
     def get_sensitivity(self):
-        return float(self.TP)/float(self.TP+self.FN + 1e-6)
+        return self.TP / (self.TP + self.FN + 1e-6)
 
     def get_specificity(self):
-        return float(self.TN)/float(self.TN+self.FP + 1e-6)
+        return self.TN / (self.TN + self.FP + 1e-6)
 
     def get_precision(self):
-        return float(self.TP)/float(self.TP+self.FP + 1e-6)
+        return self.TP / (self.TP + self.FP + 1e-6)
+
+    def get_precision2(self):
+        return (self.TN) / (self.TN + self.FN + 1e-6)
 
     def get_F1(self):
         SE = self.get_sensitivity()
         PC = self.get_precision()
-        return 2*SE*PC/(SE+PC + 1e-6)
+        return 2 * SE * PC / (SE + PC + 1e-6)
 
+    def tumor_ratio(self):
+        return (self.FN + self.TP) / (self.TP + self.TN + self.FP + self.FN)

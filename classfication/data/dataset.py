@@ -160,7 +160,7 @@ class ListDataset():
         try:
             slide = openslide.OpenSlide(self.slide_dict[slide_name])
         except:
-            raise ValueError(f'{slide_name}.tif not exists!')
+            raise ValueError(f'{slide_name}.tif not exists!, index {item}')
         img = wsi.read_slide(slide,_x,_y,self.level,self.patch_size,self.patch_size)
         img = Image.fromarray(img)
         img = self._random_crop(img)
@@ -187,3 +187,4 @@ class ListDataset():
         num_rotate = np.random.randint(0, 4)
         img = img.rotate(90 * num_rotate)
         return img
+
