@@ -32,7 +32,7 @@ class Metric:
         return np.sum(self.losses) / len(self.losses)
 
     def get_accuracy(self):
-        return self.TP + self.TN / (self.TP + self.TN + self.FP + self.FN + 1e-6)
+        return (self.TP + self.TN) / (self.TP + self.TN + self.FP + self.FN + 1e-6)
 
     def get_sensitivity(self):
         return self.TP / (self.TP + self.FN + 1e-6)

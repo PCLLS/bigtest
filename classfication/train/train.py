@@ -1,18 +1,11 @@
 import sys
 import os
-import argparse
-import logging
-import json
-import time
-
-import torch
-import pandas as pd
 import tqdm
 try:
     from tensorboardX import SummaryWriter
 except ImportError:
     from torch.utils.tensorboard import SummaryWriter
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../')
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from  classfication.utils.metrics import *
 
 class Train:
