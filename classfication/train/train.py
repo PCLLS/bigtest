@@ -41,7 +41,7 @@ class Train:
         hard_neg_example=[]
         for i, data in enumerate(qbar, 0):
             inputs, labels, indexes = data
-            inputs, labels = inputs.cuda(), labels.cuda()
+            inputs, labels = inputs.cuda(), labels.cpu()
             outputs = self.net(inputs).squeeze().cuda()
             loss = self.criterion(outputs, labels)
             probs = self.out_fn(outputs).cpu()
@@ -56,7 +56,7 @@ class Train:
         hard_neg_example=[]
         for i, data in enumerate(qbar, 0):
             inputs, labels, indexes = data
-            inputs, labels = inputs.cuda(), labels.cuda()
+            inputs, labels = inputs.cuda(), labels.cpu()
             outputs = self.net(inputs).squeeze().cuda()
             loss = self.criterion(outputs, labels)
             probs = self.out_fn(outputs).cpu()
