@@ -42,7 +42,7 @@ class Train:
         for i, data in enumerate(qbar, 0):
             inputs, labels, indexes = data
             inputs, labels = inputs.cuda(), labels.cpu()
-            outputs = self.net(inputs).squeeze().cuda()
+            outputs = self.net(inputs).squeeze().cpu()
             loss = self.criterion(outputs, labels)
             probs = self.out_fn(outputs).cpu()
             metrics.add_data(probs, labels, indexes,loss)
@@ -57,7 +57,7 @@ class Train:
         for i, data in enumerate(qbar, 0):
             inputs, labels, indexes = data
             inputs, labels = inputs.cuda(), labels.cpu()
-            outputs = self.net(inputs).squeeze().cuda()
+            outputs = self.net(inputs).squeeze().cpu()
             loss = self.criterion(outputs, labels)
             probs = self.out_fn(outputs).cpu()
             metrics.add_data(probs, labels, indexes,loss)
