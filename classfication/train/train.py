@@ -1,11 +1,18 @@
 import sys
 import os
+import argparse
+import logging
+import json
+import time
+
+import torch
+import pandas as pd
 import tqdm
 try:
     from tensorboardX import SummaryWriter
 except ImportError:
     from torch.utils.tensorboard import SummaryWriter
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../')
 from  classfication.utils.metrics import *
 
 class Train:
@@ -30,8 +37,9 @@ class Train:
             self.optimizer.step()
             probs = self.out_fn(outputs)
             metrics.add_data(probs, labels, indexes,loss)
-            qbar.set_description(f'Train Loss:{loss:.4f},acc:{metrics.get_accuracy():.4f},pos:{metrics.get_precision():.4f},neg:{metrics.get_precision2():.4f}-tumor_ratio:{metrics.tumor_ratio():.4f}')
+            qbar.set_description(f'Train Loss:{metrics.get_loss():.4f},acc:{metrics.get_accuracy():.4f},pos:{metrics.get_precision():.4f},neg:{metrics.get_precision2():.4f}-tumor_ratio:{metrics.tumor_ratio():.4f}')
             outputs = self.out_fn(outputs)
+        torch.cuda.empty_cache()
         return metrics
 
     def eval_epoch(self,eval_dataloader):
@@ -39,14 +47,15 @@ class Train:
         self.net.eval()
         qbar = tqdm.tqdm(eval_dataloader, dynamic_ncols=True, leave=False)
         hard_neg_example=[]
-        for i, data in enumerate(qbar, 0):
-            inputs, labels, indexes = data
-            inputs, labels = inputs.cuda(), labels.cpu()
-            outputs = self.net(inputs).squeeze().cpu()
-            loss = self.criterion(outputs, labels)
-            probs = self.out_fn(outputs).cpu()
-            metrics.add_data(probs, labels, indexes,loss)
-            qbar.set_description(f'accuracy:{metrics.get_accuracy():.4f}, pos:{metrics.get_precision():.4f},neg:{metrics.get_precision2():.4f}-tumor_ratio:{metrics.tumor_ratio():.4f}')
+        with torch.no_grad():
+            for i, data in enumerate(qbar, 0):
+                inputs, labels, indexes = data
+                inputs, labels = inputs.cuda(), labels.cpu()
+                outputs = self.net(inputs).cpu()
+                loss = self.criterion(outputs, labels)
+                probs = self.out_fn(outputs).cpu()
+                metrics.add_data(probs, labels, indexes,loss)
+                qbar.set_description(f'accuracy:{metrics.get_accuracy():.4f}, pos:{metrics.get_precision():.4f},neg:{metrics.get_precision2():.4f}-tumor_ratio:{metrics.tumor_ratio():.4f}')
         return metrics
 
     def hard_epoch(self,hard_dataloader):
@@ -54,12 +63,13 @@ class Train:
         self.net.eval()
         qbar = tqdm.tqdm(hard_dataloader, dynamic_ncols=True, leave=False)
         hard_neg_example=[]
-        for i, data in enumerate(qbar, 0):
-            inputs, labels, indexes = data
-            inputs, labels = inputs.cuda(), labels.cpu()
-            outputs = self.net(inputs).squeeze().cpu()
-            loss = self.criterion(outputs, labels)
-            probs = self.out_fn(outputs).cpu()
-            metrics.add_data(probs, labels, indexes,loss)
-            qbar.set_description(f'accuracy:{metrics.get_accuracy():.4f}, pos:{metrics.get_precision():.4f},neg:{metrics.get_precision2():.4f}-tumor_ratio:{metrics.tumor_ratio():.4f}')
-        return metrics
+        with torch.no_grad():
+            for i, data in enumerate(qbar, 0):
+                inputs, labels, indexes = data
+                inputs, labels= inputs.cuda(), labels.cpu()
+                outputs = self.net(inputs).cpu()
+                loss = self.criterion(outputs, labels)
+                probs = self.out_fn(outputs).cpu()
+                metrics.add_data(probs, labels, indexes,loss)
+                qbar.set_description(f'accuracy:{metrics.get_accuracy():.4f}, pos:{metrics.get_precision():.4f},neg:{metrics.get_precision2():.4f}-tumor_ratio:{metrics.tumor_ratio():.4f}')
+        return metric

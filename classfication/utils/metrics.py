@@ -20,8 +20,8 @@ class Metric:
         target = target.numpy()
         assert predict.shape == target.shape
         if predict.shape == indexes.shape:
-            self.FP_list += list(indexes[(predict == 1) * (target == 0)])
-            self.FN_list += list(indexes[(predict == 0) * (target == 1)])
+            self.FP_list += list(indexes[(predict == 1) * (target == 0)].numpy())
+            self.FN_list += list(indexes[(predict == 0) * (target == 1)].numpy())
         self.TP += np.sum((predict == 1) * (target == 1))
         self.FP += np.sum((predict == 1) * (target == 0))
         self.TN += np.sum((predict == 0) * (target == 0))
