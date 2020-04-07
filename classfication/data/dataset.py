@@ -8,7 +8,7 @@ from classfication.preprocess.wsi_ops import wsi
 from PIL import Image
 import pandas as pd
 class MaskDataset():
-    def __init__(self,tif_folder,mask_folder,level,patch_size,crop_size,table):
+    def __init__(self,tif_folder,mask_folder,level,patch_size,crop_size,table,rotate=-1,flip=None):
         """
         Dataset for Mask
         :param list_file: cords file. tif_name,x,y
@@ -16,7 +16,6 @@ class MaskDataset():
         :param mask_folder: /CamelyonMaskfolder/
         :param level:
         :param patch_size: patch_size
-        :param transform: transform
         """
         self.table=table
         self.tif_folder=tif_folder
@@ -27,6 +26,8 @@ class MaskDataset():
         self._totensor=transforms.ToTensor()
         self._color_jitter = transforms.ColorJitter(64.0/255, 0.75, 0.25, 0.04)
         self._preprocess()
+        self._flip = flip
+        self._rotate = rotate
 
     def _preprocess(self):
         tif_list = glob.glob(os.path.join(self.tif_folder, '*/*.tif'))
@@ -75,21 +76,20 @@ class MaskDataset():
         target = Image.fromarray(target)
         img, target = self._random_crop(img,target)
         img = self._color_jitter(img)
-        img,target = self._random_flip(img,target)
+        if self._flip:
+            img = img.transpose(Image.FLIP_LEFT_RIGHT)
+            target = img.transpose(Image.FLIP_LEFT_RIGHT)
         img,target = self._random_rotate( img, target)
         # 取最后一个通道
         img, target = self._totensor(img),self._totensor(target)[0,:,:]
         return img,target,index
 
-    def _random_flip(self,img,target):
-        # use lefy_right flip
-        if np.random.rand() > 0.5:
-            img = img.transpose(Image.FLIP_LEFT_RIGHT)
-            taget = img.transpose(Image.FLIP_LEFT_RIGHT)
-        return img,target
 
     def _random_rotate(self,img,target):
-        num_rotate = np.random.randint(0, 4)
+        if self._rotate == -1:
+            num_rotate = np.random.randint(0, 4)
+        else:
+            num_rotate = self._rotate
         img = img.rotate(90 * num_rotate)
         target = target.rotate(90 * num_rotate)
         return img, target
@@ -102,15 +102,17 @@ class MaskDataset():
         :param target: PIL
         :return:
         '''
-
         xloc = np.random.randint(0,self.patch_size-self.crop_size)
         yloc = np.random.randint(0,self.patch_size-self.crop_size)
         img = img.crop((xloc,yloc,xloc+self.crop_size,yloc+self.crop_size))
         target = target.crop((xloc,yloc,xloc+self.crop_size,yloc+self.crop_size))
         return img,target
 
+
+
+
 class ListDataset():
-    def __init__(self,tif_folder,mask_folder,level,patch_size,crop_size,table):
+    def __init__(self,tif_folder,mask_folder,level,patch_size,crop_size,table,rotate=-1,flip=None):
         '''
 
         :param list_file:
@@ -129,6 +131,8 @@ class ListDataset():
         self._preprocess()
         self._totensor = transforms.ToTensor()
         self._color_jitter = transforms.ColorJitter(64.0 / 255, 0.75, 0.25, 0.04)
+        self._flip = flip
+        self._rotate = rotate
 
     def __len__(self):
         """
@@ -163,6 +167,8 @@ class ListDataset():
             raise ValueError(f'{slide_name}.tif not exists!, index {item}')
         img = wsi.read_slide(slide,_x,_y,self.level,self.patch_size,self.patch_size)
         img = Image.fromarray(img)
+        if self._flip:
+            img = img.transpose(PIL.Image.FLIP_LEFT_RIGHT)
         img = self._random_crop(img)
         img =  self._color_jitter(img)
         img = self._random_rotate(img)
@@ -184,7 +190,8 @@ class ListDataset():
         return img
 
     def _random_rotate(self,img):
-        num_rotate = np.random.randint(0, 4)
+        if self._rotate==-1:
+            num_rotate = np.random.randint(0, 4)
+        num_rotate = self._rotate
         img = img.rotate(90 * num_rotate)
         return img
-

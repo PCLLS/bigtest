@@ -35,7 +35,7 @@ class RandomSampler(Sampler):
                 query = data_source.table.query(f'(label=={label})')
                 for slide in self.slides[label]:
                     indexes=query[query['slide_name'] == slide].index
-                    self.query_hist[f'{slide}_{label}'] = indexes
+                    self.query_hist[f'{slide}_{label}'] = indexes.tolist()
         self.sample()
 
     @property
