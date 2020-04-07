@@ -8,7 +8,7 @@ from classfication.preprocess.wsi_ops import wsi
 from PIL import Image
 import pandas as pd
 class MaskDataset():
-    def __init__(self,tif_folder,mask_folder,level,patch_size,crop_size,table,rotate=-1,flip=None):
+    def __init__(self,tif_folder,mask_folder,level,patch_size,crop_size,table,rotate=-1,flip=None,color_jitter=1):
         """
         Dataset for Mask
         :param list_file: cords file. tif_name,x,y
@@ -28,6 +28,7 @@ class MaskDataset():
         self._preprocess()
         self._flip = flip
         self._rotate = rotate
+        self._color_jitter=color_jitter
 
     def _preprocess(self):
         tif_list = glob.glob(os.path.join(self.tif_folder, '*/*.tif'))
@@ -75,7 +76,8 @@ class MaskDataset():
         img = Image.fromarray(img)
         target = Image.fromarray(target)
         img, target = self._random_crop(img,target)
-        img = self._color_jitter(img)
+        if self._color_jitter:
+            img = self._color_jitter(img)
         if self._flip:
             img = img.transpose(Image.FLIP_LEFT_RIGHT)
             target = img.transpose(Image.FLIP_LEFT_RIGHT)
@@ -112,7 +114,7 @@ class MaskDataset():
 
 
 class ListDataset():
-    def __init__(self,tif_folder,mask_folder,level,patch_size,crop_size,table,rotate=-1,flip=None):
+    def __init__(self,tif_folder,mask_folder,level,patch_size,crop_size,table,rotate=-1,flip=0,color_jitter=1):
         '''
 
         :param list_file:
@@ -133,6 +135,7 @@ class ListDataset():
         self._color_jitter = transforms.ColorJitter(64.0 / 255, 0.75, 0.25, 0.04)
         self._flip = flip
         self._rotate = rotate
+        self._color_jitter=color_jitter
 
     def __len__(self):
         """
@@ -170,7 +173,8 @@ class ListDataset():
         if self._flip:
             img = img.transpose(PIL.Image.FLIP_LEFT_RIGHT)
         img = self._random_crop(img)
-        img =  self._color_jitter(img)
+        if self._color_jitter:
+            img =  self._color_jitter(img)
         img = self._random_rotate(img)
         img = self._totensor(img)
         return img, target, item
